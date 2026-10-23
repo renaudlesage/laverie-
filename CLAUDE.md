@@ -63,7 +63,11 @@ Conventions SQL :
 - clés primaires `uuid` (`gen_random_uuid()`), horodatages `timestamptz` ;
 - chaque table métier porte `organisation_id` et `cree_le` ;
 - enums Postgres pour les ensembles fermés (rôles, statuts, technologies, types d'événements) ;
-- une migration par sujet, numérotée : `supabase/migrations/0001_socle.sql`, `0002_rls.sql`, …
+- une migration par sujet, numérotée : `supabase/migrations/0001_socle.sql`, `0002_rls.sql`, … chacune entre `begin;` et `commit;` ;
+- références entre tables par clés étrangères composites `(organisation_id, id)` : une ligne ne pointe jamais vers une autre organisation ;
+- fonctions d'aide des policies dans le schéma `prive` (non exposé par l'API), `security definer` avec `set search_path = ''` ;
+- Supabase accorde tous les droits par défaut sur les nouvelles tables : toute migration qui crée une table active la RLS, révoque tout à `anon`/`authenticated` puis accorde au plus juste (voir `0002_rls.sql`) ;
+- toute nouvelle règle d'accès s'accompagne d'un cas dans `supabase/tests/rls.sql` ; tester en local avec `supabase/tests/local/imitation_supabase.sql`.
 
 ## 6. Couche d'identification
 

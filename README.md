@@ -2,7 +2,7 @@
 
 Traçabilité du linge professionnel et de ses passages en laverie, multi-technologie (code-barres, QR, DataMatrix, NFC, puis RFID UHF). Premier marché : les zones de secours.
 
-> Statut : **jalon M0 livré** (socle PWA, connexion, choix d'organisation). Prochaine étape : M1, schéma et sécurité.
+> Statut : **jalons M0 et M1 livrés** (socle PWA, connexion, choix d'organisation ; schéma, RLS, seeds, tests). Prochaine étape : M2, référentiels.
 
 ## Documents
 
@@ -42,9 +42,27 @@ Ouvrir `https://stackblitz.com/github/<compte>/<depot>`, créer le fichier `.env
 
 `vercel.json` renvoie toutes les routes (`/connexion`, `/v/<code>`…) vers l'app.
 
-### Comptes
+### Base de données
 
-La création de compte n'est pas ouverte au public : créer les utilisateurs dans Supabase (*Authentication → Users → Add user*). Le choix d'organisation lit la table `membres`, créée au jalon M1 ; avant cela, l'écran l'indique.
+Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichier à la fois, dans l'ordre** :
+
+| Ordre | Fichier | Contenu |
+| --- | --- | --- |
+| 1 | `supabase/migrations/0001_socle.sql` | Enums, tables, index, contraintes, journal en ajout seul |
+| 2 | `supabase/migrations/0002_rls.sql` | RLS, fonctions d'aide (`prive.est_membre`, `prive.a_role`…), droits, vue `porteurs_anonymises` |
+| 3 | `supabase/migrations/0003_seeds.sql` | Traitements par défaut créés avec chaque organisation |
+| 4 | `supabase/migrations/0004_notices.sql` | Bucket privé `notices` et ses règles d'accès |
+
+Puis vérifier avec `supabase/tests/rls.sql` : la dernière ligne doit afficher « Tous les tests RLS sont passés ». Le test travaille dans une transaction annulée, il ne laisse aucune donnée.
+
+### Comptes et première organisation
+
+La création de compte n'est pas ouverte au public.
+
+1. Créer l'utilisateur dans *Authentication → Users → Add user* (cocher *Auto Confirm User*).
+2. Ouvrir `supabase/amorcage.sql`, remplacer le nom de l'organisation et l'e-mail, l'exécuter dans le SQL Editor : l'organisation est créée avec ses traitements par défaut et l'utilisateur en devient l'administrateur.
+
+Les membres suivants seront ajoutés depuis l'app (jalon M2).
 
 ### Installer sur Android
 
@@ -61,10 +79,15 @@ src/
   composants/                gabarit, indicateur de connexion, protections de routes
   pages/                     connexion, choix d'organisation, accueil, /v/:code
 public/                      icônes PWA
+supabase/
+  migrations/                à exécuter dans l'ordre dans le SQL Editor
+  tests/rls.sql              tests d'isolation et d'immuabilité du journal
+  tests/local/               outillage pour un Postgres local (ne pas exécuter dans Supabase)
+  amorcage.sql               créer une organisation et son premier admin
 ```
 
 ## Avancer avec Claude Code
 
 1. Ouvrir ce dépôt dans Claude Code.
-2. Demander : « Lis CLAUDE.md et docs/, puis réalise le jalon M0 du backlog. »
+2. Demander : « Lis CLAUDE.md et docs/, puis réalise le jalon suivant du backlog. »
 3. Avancer jalon par jalon ; exécuter les migrations SQL fournies dans le SQL Editor de Supabase, dans l'ordre.
