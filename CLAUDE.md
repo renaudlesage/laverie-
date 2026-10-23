@@ -88,7 +88,12 @@ Une seule abstraction côté front : un **adaptateur** produit `{ technologie, v
 
 - Deux modes de scan partagés par tous les écrans : **unitaire** (un scan ouvre la fiche et les actions possibles selon le statut) et **rafale** (liste dédupliquée en direct, compteurs lus / attendus / inconnus, validation groupée).
 - Usage en laverie et en caserne : **grandes cibles tactiles**, fort contraste, utilisable avec des gants, retour sonore et vibration à chaque lecture.
-- Cohérence visuelle : la direction visuelle d'**Eventware** fait référence dans la famille de produits de Ren. Demander les tokens de design avant le premier écran ; à défaut, rester sobre et neutre pour pouvoir les appliquer ensuite.
+- Cohérence visuelle : direction **Eventware**, appliquée dans `src/styles.css` (tokens sur `:root`, thèmes jour et nuit). Un tableau de bord d'instruments, pas un site :
+  - couleurs d'état à sens fixe (`--etat-ok`, `--etat-veille`, `--etat-chaud`, `--etat-info`, `--etat-froid`), jamais décoratives ; un chiffre coloré signifie un état ;
+  - teintes `--dom-*` pour le repérage seulement ; encre sur aplat = `--on-teinte`, jamais `#fff` en dur ;
+  - `--mono` pour codes, références, heures, compteurs et petits libellés en capitales espacées ; `--rayon` 2 px ; seule ombre portée : `--ombre-flottant` ;
+  - thème : `data-theme="clair" | "sombre"` sur `<html>` (bouton Nuit/Jour), absent = système ;
+  - écart assumé : cibles tactiles de 56 px (`--cible-tactile`) pour l'usage avec des gants.
 - Indicateur permanent de connexion et du nombre d'événements en attente de synchronisation.
 
 ## 8. À ne pas faire

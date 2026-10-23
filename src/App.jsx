@@ -9,6 +9,8 @@ import ChoixOrganisation from './pages/ChoixOrganisation.jsx';
 import Accueil from './pages/Accueil.jsx';
 import VetementParCode from './pages/VetementParCode.jsx';
 import ConfigurationManquante from './pages/ConfigurationManquante.jsx';
+import { ThemeContext } from './composants/BoutonTheme.jsx';
+import { useTheme } from './lib/theme.js';
 import Parametres from './pages/Parametres.jsx';
 import ExigeDroit from './composants/ExigeDroit.jsx';
 import Sites from './referentiels/Sites.jsx';
@@ -25,47 +27,51 @@ function Protege({ droit, children }) {
 }
 
 export default function App() {
+  const theme = useTheme();
+
   if (configurationManquante.length) {
     return <ConfigurationManquante variables={configurationManquante} />;
   }
 
   return (
-    <AuthProvider>
-      <OrganisationProvider>
-        <Routes>
-          <Route path="/connexion" element={<Connexion />} />
-          <Route
-            path="/organisation"
-            element={
-              <ExigeSession>
-                <ChoixOrganisation />
-              </ExigeSession>
-            }
-          />
-          <Route
-            element={
-              <ExigeSession>
-                <ExigeOrganisation>
-                  <Gabarit />
-                </ExigeOrganisation>
-              </ExigeSession>
-            }
-          >
-            <Route index element={<Accueil />} />
-            <Route path="v/:code" element={<VetementParCode />} />
-            <Route path="parametres" element={<Protege droit="voitReferentiels"><Parametres /></Protege>} />
-            <Route path="parametres/sites" element={<Protege droit="voitReferentiels"><Sites /></Protege>} />
-            <Route path="parametres/traitements" element={<Protege droit="voitReferentiels"><Traitements /></Protege>} />
-            <Route path="parametres/articles" element={<Protege droit="voitReferentiels"><Articles /></Protege>} />
-            <Route path="parametres/articles/:id" element={<Protege droit="voitReferentiels"><ArticleDetail /></Protege>} />
-            <Route path="parametres/porteurs" element={<Protege droit="voitReferentiels"><Porteurs /></Protege>} />
-            <Route path="parametres/porteurs/import" element={<Protege droit="gerePorteurs"><ImportPorteurs /></Protege>} />
-            <Route path="parametres/lecteurs" element={<Protege droit="voitReferentiels"><Lecteurs /></Protege>} />
-            <Route path="parametres/membres" element={<Protege droit="estAdmin"><Membres /></Protege>} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </OrganisationProvider>
-    </AuthProvider>
+    <ThemeContext.Provider value={theme}>
+      <AuthProvider>
+        <OrganisationProvider>
+          <Routes>
+            <Route path="/connexion" element={<Connexion />} />
+            <Route
+              path="/organisation"
+              element={
+                <ExigeSession>
+                  <ChoixOrganisation />
+                </ExigeSession>
+              }
+            />
+            <Route
+              element={
+                <ExigeSession>
+                  <ExigeOrganisation>
+                    <Gabarit />
+                  </ExigeOrganisation>
+                </ExigeSession>
+              }
+            >
+              <Route index element={<Accueil />} />
+              <Route path="v/:code" element={<VetementParCode />} />
+              <Route path="parametres" element={<Protege droit="voitReferentiels"><Parametres /></Protege>} />
+              <Route path="parametres/sites" element={<Protege droit="voitReferentiels"><Sites /></Protege>} />
+              <Route path="parametres/traitements" element={<Protege droit="voitReferentiels"><Traitements /></Protege>} />
+              <Route path="parametres/articles" element={<Protege droit="voitReferentiels"><Articles /></Protege>} />
+              <Route path="parametres/articles/:id" element={<Protege droit="voitReferentiels"><ArticleDetail /></Protege>} />
+              <Route path="parametres/porteurs" element={<Protege droit="voitReferentiels"><Porteurs /></Protege>} />
+              <Route path="parametres/porteurs/import" element={<Protege droit="gerePorteurs"><ImportPorteurs /></Protege>} />
+              <Route path="parametres/lecteurs" element={<Protege droit="voitReferentiels"><Lecteurs /></Protege>} />
+              <Route path="parametres/membres" element={<Protege droit="estAdmin"><Membres /></Protege>} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </OrganisationProvider>
+      </AuthProvider>
+    </ThemeContext.Provider>
   );
 }

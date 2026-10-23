@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthProvider.jsx';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import { useDroits } from '../organisation/useDroits.js';
 import IndicateurConnexion from './IndicateurConnexion.jsx';
+import BoutonTheme from './BoutonTheme.jsx';
 
 export default function Gabarit() {
   const { deconnexion } = useAuth();
@@ -23,6 +24,7 @@ export default function Gabarit() {
           {adhesions.length > 1 && (
             <Link to="/organisation" className="bouton bouton-discret">Changer</Link>
           )}
+          <BoutonTheme />
           <button type="button" className="bouton bouton-discret" onClick={deconnexion}>
             Déconnexion
           </button>
