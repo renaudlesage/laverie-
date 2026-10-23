@@ -9,6 +9,20 @@ import ChoixOrganisation from './pages/ChoixOrganisation.jsx';
 import Accueil from './pages/Accueil.jsx';
 import VetementParCode from './pages/VetementParCode.jsx';
 import ConfigurationManquante from './pages/ConfigurationManquante.jsx';
+import Parametres from './pages/Parametres.jsx';
+import ExigeDroit from './composants/ExigeDroit.jsx';
+import Sites from './referentiels/Sites.jsx';
+import Traitements from './referentiels/Traitements.jsx';
+import Articles from './referentiels/Articles.jsx';
+import ArticleDetail from './referentiels/ArticleDetail.jsx';
+import Porteurs from './referentiels/Porteurs.jsx';
+import ImportPorteurs from './referentiels/ImportPorteurs.jsx';
+import Lecteurs from './referentiels/Lecteurs.jsx';
+import Membres from './referentiels/Membres.jsx';
+
+function Protege({ droit, children }) {
+  return <ExigeDroit droit={droit}>{children}</ExigeDroit>;
+}
 
 export default function App() {
   if (configurationManquante.length) {
@@ -39,6 +53,15 @@ export default function App() {
           >
             <Route index element={<Accueil />} />
             <Route path="v/:code" element={<VetementParCode />} />
+            <Route path="parametres" element={<Protege droit="voitReferentiels"><Parametres /></Protege>} />
+            <Route path="parametres/sites" element={<Protege droit="voitReferentiels"><Sites /></Protege>} />
+            <Route path="parametres/traitements" element={<Protege droit="voitReferentiels"><Traitements /></Protege>} />
+            <Route path="parametres/articles" element={<Protege droit="voitReferentiels"><Articles /></Protege>} />
+            <Route path="parametres/articles/:id" element={<Protege droit="voitReferentiels"><ArticleDetail /></Protege>} />
+            <Route path="parametres/porteurs" element={<Protege droit="voitReferentiels"><Porteurs /></Protege>} />
+            <Route path="parametres/porteurs/import" element={<Protege droit="gerePorteurs"><ImportPorteurs /></Protege>} />
+            <Route path="parametres/lecteurs" element={<Protege droit="voitReferentiels"><Lecteurs /></Protege>} />
+            <Route path="parametres/membres" element={<Protege droit="estAdmin"><Membres /></Protege>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

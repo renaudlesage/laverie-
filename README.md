@@ -2,7 +2,7 @@
 
 Traçabilité du linge professionnel et de ses passages en laverie, multi-technologie (code-barres, QR, DataMatrix, NFC, puis RFID UHF). Premier marché : les zones de secours.
 
-> Statut : **jalons M0 et M1 livrés** (socle PWA, connexion, choix d'organisation ; schéma, RLS, seeds, tests). Prochaine étape : M2, référentiels.
+> Statut : **jalons M0 à M2 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels saisis dans l'app). Prochaine étape : M3, couche d'identification.
 
 ## Documents
 
@@ -52,6 +52,7 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 2 | `supabase/migrations/0002_rls.sql` | RLS, fonctions d'aide (`prive.est_membre`, `prive.a_role`…), droits, vue `porteurs_anonymises` |
 | 3 | `supabase/migrations/0003_seeds.sql` | Traitements par défaut créés avec chaque organisation |
 | 4 | `supabase/migrations/0004_notices.sql` | Bucket privé `notices` et ses règles d'accès |
+| 5 | `supabase/migrations/0005_membres.sql` | Invitations, ajout de membres par e-mail, protection du dernier admin |
 
 Puis vérifier avec `supabase/tests/rls.sql` : la dernière ligne doit afficher « Tous les tests RLS sont passés ». Le test travaille dans une transaction annulée, il ne laisse aucune donnée.
 
@@ -62,7 +63,17 @@ La création de compte n'est pas ouverte au public.
 1. Créer l'utilisateur dans *Authentication → Users → Add user* (cocher *Auto Confirm User*).
 2. Ouvrir `supabase/amorcage.sql`, remplacer le nom de l'organisation et l'e-mail, l'exécuter dans le SQL Editor : l'organisation est créée avec ses traitements par défaut et l'utilisateur en devient l'administrateur.
 
-Les membres suivants seront ajoutés depuis l'app (jalon M2).
+Ensuite, tout se fait dans l'app : *Paramètres → Membres → Ajouter*. Si la personne a déjà un compte, elle devient membre tout de suite ; sinon une invitation l'attend et devient une adhésion à sa première connexion par **« Lien par e-mail »** sur l'écran de connexion.
+
+Pour que ce lien fonctionne, laisser activé *Authentication → Sign In / Providers → Allow new users to sign up*. Un compte créé sans invitation ne voit aucune donnée (il n'appartient à aucune organisation).
+
+### Configurer une zone (jalon M2)
+
+*Paramètres* (admin) : créer les **sites** (postes, laverie interne, laverie externe), vérifier les **traitements**, créer les **articles** — limites par traitement, notice PDF, puis *Activer l'article* —, saisir ou **importer les porteurs** (CSV : `matricule;nom;prenom;casier;site`), déclarer les **lecteurs** et ajouter les **membres**.
+
+### Tests
+
+`npm test` lance les tests Vitest (lecture CSV, analyse d'import, messages d'erreur).
 
 ### Installer sur Android
 
@@ -77,7 +88,8 @@ src/
   organisation/              adhésions et organisation courante
   connexion/                 état réseau, file d'attente (vide jusqu'à M7)
   composants/                gabarit, indicateur de connexion, protections de routes
-  pages/                     connexion, choix d'organisation, accueil, /v/:code
+  pages/                     connexion, choix d'organisation, accueil, paramètres, /v/:code
+  referentiels/              écrans sites, traitements, articles, porteurs (+ import CSV), lecteurs, membres
 public/                      icônes PWA
 supabase/
   migrations/                à exécuter dans l'ordre dans le SQL Editor

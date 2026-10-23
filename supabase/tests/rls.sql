@@ -1,6 +1,6 @@
 -- rls.sql — Tests d'isolation et d'immuabilité du journal (jalon M1).
 --
--- À coller tel quel dans le SQL Editor de Supabase, après les migrations 0001 à 0004.
+-- À coller tel quel dans le SQL Editor de Supabase, après les migrations 0001 à 0005.
 -- Tout se passe dans une transaction annulée à la fin : aucune donnée ne reste en base.
 -- Succès : la dernière ligne affiche « Tous les tests RLS sont passés ».
 -- Échec : l'exécution s'arrête sur une erreur « ÉCHEC : … » qui décrit le test.
@@ -471,6 +471,71 @@ begin
     'laverie externe rattachée à un poste');
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- 7. Membres et invitations (0005)
+-- ---------------------------------------------------------------------------
+
+do $$
+declare
+  resultat text;
+begin
+  -- Un non-admin ne peut ni inviter ni lister les membres avec leurs e-mails.
+  perform pg_temp.devenir('aaaaaaaa-0000-4000-8000-000000000002');
+  perform pg_temp.doit_echouer(
+    $q$select public.inviter_membre('a0000000-0000-4000-8000-000000000000', 'x@exemple.invalid', 'admin')$q$,
+    'gestionnaire : ne peut pas inviter de membre');
+  perform pg_temp.verifier(
+    pg_temp.compter($q$select * from public.membres_organisation('a0000000-0000-4000-8000-000000000000')$q$) = 0,
+    'gestionnaire : membres_organisation ne renvoie rien');
+  reset role;
+
+  -- L'admin de B n'invite pas dans A.
+  perform pg_temp.devenir('bbbbbbbb-0000-4000-8000-000000000001');
+  perform pg_temp.doit_echouer(
+    $q$select public.inviter_membre('a0000000-0000-4000-8000-000000000000', 'x@exemple.invalid', 'admin')$q$,
+    'admin B : ne peut pas inviter dans l''organisation A');
+  reset role;
+
+  perform pg_temp.devenir('aaaaaaaa-0000-4000-8000-000000000001');
+  -- Compte existant : adhésion immédiate.
+  resultat := public.inviter_membre('a0000000-0000-4000-8000-000000000000',
+    'TEST-RLS-SANS-ORGANISATION@exemple.invalid', 'auditeur');
+  perform pg_temp.verifier(resultat = 'membre', 'admin : un compte existant devient membre immédiatement');
+  perform pg_temp.verifier(
+    pg_temp.compter($q$select 1 from public.membres_organisation('a0000000-0000-4000-8000-000000000000') where email = 'test-rls-sans-organisation@exemple.invalid' and role = 'auditeur'$q$) = 1,
+    'admin : membres_organisation liste le nouveau membre avec son e-mail');
+  -- Compte inexistant : invitation.
+  resultat := public.inviter_membre('a0000000-0000-4000-8000-000000000000',
+    'test-rls-nouveau@exemple.invalid', 'laverie_externe', 'a1000000-0000-4000-8000-000000000003');
+  perform pg_temp.verifier(resultat = 'invitation', 'admin : un e-mail inconnu donne une invitation');
+  perform pg_temp.doit_echouer(
+    $q$select public.inviter_membre('a0000000-0000-4000-8000-000000000000', 'y@exemple.invalid', 'laverie_externe', 'a1000000-0000-4000-8000-000000000001')$q$,
+    'invitation laverie externe sur un site qui n''est pas une laverie externe');
+  -- Le dernier admin ne peut pas se retirer.
+  perform pg_temp.doit_echouer(
+    $q$update public.membres set role = 'gestionnaire' where user_id = 'aaaaaaaa-0000-4000-8000-000000000001'$q$,
+    'le dernier admin ne peut pas perdre son rôle');
+  perform pg_temp.doit_echouer(
+    $q$delete from public.membres where user_id = 'aaaaaaaa-0000-4000-8000-000000000001'$q$,
+    'le dernier admin ne peut pas être supprimé');
+  reset role;
+
+  perform pg_temp.devenir('bbbbbbbb-0000-4000-8000-000000000001');
+  perform pg_temp.verifier(pg_temp.compter('select 1 from public.invitations') = 0,
+    'admin B : ne voit pas les invitations de A');
+  reset role;
+end;
+$$;
+
+-- Création du compte invité : l'invitation devient une adhésion.
+insert into auth.users (id, email) values ('cccccccc-0000-4000-8000-000000000002', 'Test-RLS-Nouveau@exemple.invalid');
+
+select pg_temp.verifier(
+  exists (select 1 from public.membres where user_id = 'cccccccc-0000-4000-8000-000000000002'
+          and role = 'laverie_externe' and site_id = 'a1000000-0000-4000-8000-000000000003')
+  and not exists (select 1 from public.invitations where lower(email) = 'test-rls-nouveau@exemple.invalid'),
+  'à la création du compte, l''invitation devient une adhésion');
 
 rollback;
 

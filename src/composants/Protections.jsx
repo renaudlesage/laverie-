@@ -4,10 +4,10 @@ import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import Chargement from './Chargement.jsx';
 
 export function ExigeSession({ children }) {
-  const { session, chargement } = useAuth();
+  const { session, chargement, sortieVolontaire } = useAuth();
   const location = useLocation();
   if (chargement) return <Chargement />;
-  if (!session) return <Navigate to="/connexion" replace state={{ depuis: location }} />;
+  if (!session) return <Navigate to="/connexion" replace state={sortieVolontaire ? undefined : { depuis: location }} />;
   return children;
 }
 

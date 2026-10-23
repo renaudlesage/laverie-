@@ -39,7 +39,7 @@ export default function ChoixOrganisation() {
   } else if (adhesions.length === 0) {
     corps = (
       <p className="message message-info">
-        Votre compte ({utilisateur?.email}) n'est rattaché à aucune organisation. Demandez à votre administrateur de vous ajouter.
+        Votre compte ({utilisateur?.email}) n'est rattaché à aucune organisation. Demandez à votre administrateur de vous ajouter dans « Paramètres → Membres », puis touchez « Actualiser ».
       </p>
     );
   } else {
