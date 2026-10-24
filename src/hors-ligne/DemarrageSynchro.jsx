@@ -12,12 +12,13 @@ export default function DemarrageSynchro({ children }) {
   const { organisation, role } = useOrganisation();
   const [pret, setPret] = useState(false);
   const index = ROLES_INDEX.includes(role);
+  const restreint = role === 'laverie_externe';
 
   useEffect(() => {
     let annule = false;
     let arreter = null;
     setPret(false);
-    demarrer({ utilisateurId: utilisateur.id, organisationId: organisation.id, index }).then((arret) => {
+    demarrer({ utilisateurId: utilisateur.id, organisationId: organisation.id, index, restreint }).then((arret) => {
       if (annule) arret();
       else {
         arreter = arret;
@@ -28,7 +29,7 @@ export default function DemarrageSynchro({ children }) {
       annule = true;
       arreter?.();
     };
-  }, [utilisateur.id, organisation.id, index]);
+  }, [utilisateur.id, organisation.id, index, restreint]);
 
   return pret ? children : <Chargement />;
 }

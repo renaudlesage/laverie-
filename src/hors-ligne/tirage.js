@@ -170,3 +170,31 @@ export async function rafraichir(organisationId, { vetements = [], lots = [] }) 
     if (absents.length) await rafraichir(organisationId, { lots: absents });
   }
 }
+
+// Périmètre restreint (laverie externe) : un vêtement qui n'est plus confié (livré, reparti)
+// disparaît de l'index à chaque synchronisation, avec ses tags, compteurs, lots et porteurs.
+export async function purgerHorsPerimetre(organisationId, proteges) {
+  const [vetements, lots] = await Promise.all([
+    toutLire(() => supabase.from('vetements').select('id').eq('organisation_id', organisationId).order('id')),
+    toutLire(() => supabase.from('lots').select('id').eq('organisation_id', organisationId).order('id')),
+  ]);
+  const visibles = new Set(vetements.map((v) => v.id));
+  const lotsVisibles = new Set(lots.map((l) => l.id));
+  const porteurs = await toutLire(() =>
+    supabase.from('porteurs_anonymises').select(REFERENTIELS.porteurs[1]).eq('organisation_id', organisationId).order('id'),
+  );
+  await base.transaction('rw', base.vetements, base.identifiants, base.compteurs, base.vetements_limites, base.lots, base.porteurs, async () => {
+    const locaux = await base.vetements.where('organisation_id').equals(organisationId).primaryKeys();
+    const sortis = locaux.filter((id) => !visibles.has(id) && !proteges.vetements.has(id));
+    if (sortis.length) {
+      await base.vetements.bulkDelete(sortis);
+      await base.identifiants.where('vetement_id').anyOf(sortis).delete();
+      await base.compteurs.where('vetement_id').anyOf(sortis).delete();
+      await base.vetements_limites.where('vetement_id').anyOf(sortis).delete();
+    }
+    const lotsLocaux = await base.lots.where('organisation_id').equals(organisationId).primaryKeys();
+    await base.lots.bulkDelete(lotsLocaux.filter((id) => !lotsVisibles.has(id) && !proteges.lots.has(id)));
+    await base.porteurs.where('organisation_id').equals(organisationId).delete();
+    await base.porteurs.bulkPut(porteurs);
+  });
+}

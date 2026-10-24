@@ -29,7 +29,7 @@ vi.mock('../lib/supabase.js', () => ({
     rpc: async (nom, args) => {
       if (serveur.panne) return { data: null, error: { message: 'TypeError: Failed to fetch' }, status: 0 };
       const charges = args.evenements ?? args.operations;
-      serveur.appels.push({ rpc: nom, charges });
+      serveur.appels.push({ rpc: nom, charges, org: args.org });
       return { data: charges.map((c) => serveur.repondre?.(c) ?? { id: c.id, statut: 'accepte' }), error: null };
     },
   },
@@ -38,6 +38,7 @@ vi.mock('../lib/supabase.js', () => ({
 const { base, toutEffacer } = await import('./base.js');
 const synchro = await import('./synchro.js');
 const { emettre, evenement, operation, operer } = await import('../journal/journal.js');
+const { purgerHorsPerimetre } = await import('./tirage.js');
 
 const ORG = 'org';
 const ctx = { utilisateurId: 'u1', organisationId: ORG, index: false };
@@ -143,5 +144,43 @@ describe('hors ligne : file locale et projection', () => {
     const conflitsAvant = await base.conflits.count();
     expect(conflitsAvant).toBe(0);
     expect(await base.lots.get('L1')).toBeUndefined(); // relu à la base : le lot n'existe pas
+  });
+});
+
+describe('laverie externe et prestataire multi-zones', () => {
+  it('un vêtement qui n’est plus confié sort de l’index local, avec ses tags et ses compteurs', async () => {
+    await base.vetements.put({ ...vetement, id: 'v2' });
+    await base.identifiants.put({ id: 'i2', organisation_id: ORG, vetement_id: 'v2', technologie: 'qr', valeur: 'X2', actif: true });
+    await base.compteurs.put({ organisation_id: ORG, vetement_id: 'v2', traitement_id: 't1', passages: 3 });
+    await base.porteurs.put({ id: 'p-ancien', organisation_id: ORG, matricule: 'P9' });
+    serveur.tables.porteurs_anonymises = [{ id: 'p1', organisation_id: ORG, matricule: 'P1' }];
+    // La base ne renvoie plus que v1 (v2 a été livré au poste).
+    await purgerHorsPerimetre(ORG, { vetements: new Set(), lots: new Set() });
+    expect(await base.vetements.toCollection().primaryKeys()).toEqual(['v1']);
+    expect(await base.identifiants.count()).toBe(0);
+    expect(await base.compteurs.count()).toBe(0);
+    expect((await base.porteurs.toArray()).map((p) => p.matricule)).toEqual(['P1']);
+  });
+
+  it('garde un vêtement modifié sur l’appareil et pas encore envoyé', async () => {
+    await base.vetements.put({ ...vetement, id: 'v2' });
+    await purgerHorsPerimetre(ORG, { vetements: new Set(['v2']), lots: new Set() });
+    expect((await base.vetements.toCollection().primaryKeys()).sort()).toEqual(['v1', 'v2']);
+  });
+
+  it('la file part pour chaque zone, dans l’ordre, même si une autre zone est affichée', async () => {
+    synchro._definirEnLigne(false);
+    await emettre(ORG, [evenement('contamination', 'v1')]);
+    await base.file.add({
+      utilisateur_id: 'u1', organisation_id: 'org-b', genre: 'evenement', vetements: [], lots: [],
+      charge: { id: 'e-b', type: 'perte', vetement_id: 'vb', donnees: {} },
+    });
+    synchro._definirEnLigne(true);
+    await synchro.synchroniser();
+    expect(serveur.appels.map((a) => [a.org, a.charges[0].type])).toEqual([
+      [ORG, 'contamination'],
+      ['org-b', 'perte'],
+    ]);
+    expect(await base.file.count()).toBe(0);
   });
 });

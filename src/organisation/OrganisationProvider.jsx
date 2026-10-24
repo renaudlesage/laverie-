@@ -44,6 +44,9 @@ function ecrireAdhesions(utilisateurId, liste) {
 export function OrganisationProvider({ children }) {
   const { utilisateur } = useAuth();
   const [adhesions, setAdhesions] = useState([]);
+  // Utilisateur auquel appartiennent les adhésions affichées : tant qu'elles ne sont pas celles de
+  // l'utilisateur connecté, on est en chargement (sinon redirection à tort vers le choix de la zone).
+  const [adhesionsDe, setAdhesionsDe] = useState(null);
   const [organisationId, setOrganisationId] = useState(lireChoix);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
@@ -62,13 +65,14 @@ export function OrganisationProvider({ children }) {
     if (chargePour.current !== utilisateur.id) {
       if (connues) {
         setAdhesions(connues);
+        setAdhesionsDe(utilisateur.id);
         setChargement(false);
       } else setChargement(true);
     }
     setErreur(null);
     const { data, error } = await supabase
       .from('membres')
-      .select('id, role, site_id, organisation:organisations(id, nom, type, reglages)')
+      .select('id, role, site_id, site:sites(nom), organisation:organisations(id, nom, type, reglages)')
       .eq('user_id', utilisateur.id)
       .eq('actif', true);
     const enCache = error && lireAdhesions(utilisateur.id);
@@ -90,6 +94,7 @@ export function OrganisationProvider({ children }) {
       }
     }
     chargePour.current = utilisateur.id;
+    setAdhesionsDe(utilisateur.id);
     setChargement(false);
   }, [utilisateur]);
 
@@ -104,7 +109,7 @@ export function OrganisationProvider({ children }) {
     adhesion,
     organisation: adhesion?.organisation ?? null,
     role: adhesion?.role ?? null,
-    chargement,
+    chargement: chargement || (!!utilisateur && adhesionsDe !== utilisateur.id),
     erreur,
     recharger: charger,
     choisir: (id) => {

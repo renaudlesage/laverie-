@@ -2,7 +2,7 @@
 
 Traçabilité du linge professionnel et de ses passages en laverie, multi-technologie (code-barres, QR, DataMatrix, NFC, puis RFID UHF). Premier marché : les zones de secours.
 
-> Statut : **jalons M0 à M8 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes ; enrôlement, étiquettes et import ; journal, projections, actions et fiche de vie ; laverie, circuits standard et contaminé ; fonctionnement hors ligne ; alertes et tableau de bord). Prochaine étape : M9, portail laverie externe.
+> Statut : **jalons M0 à M9 livrés — V1 complète** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes ; enrôlement, étiquettes et import ; journal, projections, actions et fiche de vie ; laverie, circuits standard et contaminé ; fonctionnement hors ligne ; alertes et tableau de bord ; portail laverie externe). Prochaine étape : pilote sur une zone.
 
 ## Documents
 
@@ -60,7 +60,7 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 10 | `supabase/migrations/0010_synchro.sql` | Horodatage `modifie_le` pour le tirage incrémental, `signaler_melanges` (alertes des refus faits sur l'appareil) |
 | 11 | `supabase/migrations/0011_alertes.sql` | Alertes automatiques (seuils, âge, usure des tags, non revenu), tâche horaire `pg_cron`, `tableau_de_bord`, diffusion en direct |
 
-Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés ») et `supabase/tests/alertes.sql` (« Tous les tests des alertes sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
+Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés »), `supabase/tests/alertes.sql` (« Tous les tests des alertes sont passés ») et `supabase/tests/etancheite.sql` (« Tous les tests d'étanchéité sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
 
 ### Comptes et première organisation
 
@@ -140,6 +140,14 @@ Onglet **Laverie** (admin, gestionnaire, opérateur laverie, laverie externe) :
 - **Réglages** (*Paramètres → Organisation*) : garantie des tags par technologie, seuil d'usure, délais « non revenu ». Les alertes liées au temps sont réévaluées chaque heure (`pg_cron`).
 - **En direct** : les écrans de laverie et le tableau de bord se mettent à jour quand un autre appareil travaille (Supabase Realtime).
 
+### Portail laverie externe (jalon M9)
+
+- **Ajouter un prestataire** : *Paramètres → Sites* (site de type « Laverie externe »), puis *Paramètres → Membres → Ajouter* avec le rôle **Laverie externe** et ce site.
+- Le prestataire ne voit **que les vêtements qui lui sont confiés** : en route vers son site (sac expédié) ou chez lui. Une fois livré au poste, le vêtement disparaît de son périmètre — et de **l'index de son appareil** à la synchronisation suivante, y compris pour la résolution hors ligne.
+- **Jamais un nom de pompier** : matricule et casier seulement, à l'écran comme dans la base locale de l'appareil.
+- Écrans : tableau de bord de son périmètre, scanner, réception, lots, contrôle, livraison ; site de travail imposé. Pas de collecte, d'enrôlement ni de réglages.
+- **Prestataire multi-zones** : un même compte peut être « Laverie externe » dans plusieurs zones (chaque zone l'ajoute avec son propre site). Écran de choix de la zone (rôle, site, actions en attente par zone), bouton **Changer** dans l'en-tête ; les actions en attente partent pour chaque zone, quelle que soit la zone affichée.
+
 ### Tests
 
 `npm test` lance les tests Vitest (normalisation des identifiants, détection des douchettes, résolution, lecture CSV, import, messages d'erreur, règles sur l'appareil, file et synchronisation hors ligne).
@@ -174,6 +182,7 @@ supabase/
   tests/laverie.sql          cycle laverie, comptage, circuits, écarts, contrôle renforcé
   tests/synchro.sql          tirage incrémental, deux appareils hors ligne, renvoi sans doublon
   tests/alertes.sql          ouverture et fermeture de chaque type d'alerte, acquittement, tableau de bord
+  tests/etancheite.sql       prestataire multi-zones : vêtements confiés seulement, aucun nom, aucune écriture hors périmètre
   tests/local/               outillage pour un Postgres local (ne pas exécuter dans Supabase)
   amorcage.sql               créer une organisation et son premier admin
 ```

@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase.js';
 import { base, lireMeta, viderIndex, ecrireMeta } from './base.js';
-import { protegesLocaux, rafraichir, tirerChangements, tirerReferentiels, tirerTout } from './tirage.js';
+import { protegesLocaux, purgerHorsPerimetre, rafraichir, tirerChangements, tirerReferentiels, tirerTout } from './tirage.js';
 
 // Synchronisation : la file est poussée dans l'ordre (événements, opérations sur les lots,
 // lectures brutes), puis l'index local est mis à jour depuis la base. Une écriture refusée
@@ -13,12 +13,13 @@ const LOT_ENVOI = { evenement: 100, operation: 100, lecture: 500, signalement: 1
 // Traces envoyées sans action de l'utilisateur à suivre : lectures brutes, alertes de circuits.
 const TRACES = ['lecture', 'signalement'];
 
-let contexte = null; // { utilisateurId, organisationId, index }
+let contexte = null; // { utilisateurId, organisationId, index, restreint }
 let etat = {
   enLigne: typeof navigator === 'undefined' ? true : navigator.onLine,
   enAttente: 0, // événements et opérations sur les lots
   tracesEnAttente: 0, // lectures brutes et signalements
   conflits: 0,
+  conflitsAilleurs: 0, // conflits dans une autre organisation de l'utilisateur
   enCours: false,
   pret: false,
   derniereSynchro: null,
@@ -49,14 +50,19 @@ export function contexteCourant() {
 
 const cleContexte = () => [contexte.utilisateurId, contexte.organisationId];
 
+// La file de l'utilisateur, toutes organisations confondues (prestataire multi-zones) :
+// tout part dès que le réseau revient, quelle que soit la zone affichée.
+const fileUtilisateur = () => base.file.orderBy('seq').filter((i) => i.utilisateur_id === contexte.utilisateurId);
+
 export async function compter() {
   if (!contexte) return;
-  const [traces, tout, conflits] = await Promise.all([
-    base.file.where('[utilisateur_id+organisation_id]').equals(cleContexte()).filter((i) => TRACES.includes(i.genre)).count(),
-    base.file.where('[utilisateur_id+organisation_id]').equals(cleContexte()).count(),
-    base.conflits.where('[utilisateur_id+organisation_id]').equals(cleContexte()).count(),
+  const [items, conflits] = await Promise.all([
+    fileUtilisateur().toArray(),
+    base.conflits.filter((c) => c.utilisateur_id === contexte.utilisateurId).toArray(),
   ]);
-  publier({ enAttente: tout - traces, tracesEnAttente: traces, conflits });
+  const traces = items.filter((i) => TRACES.includes(i.genre)).length;
+  const ici = conflits.filter((c) => c.organisation_id === contexte.organisationId).length;
+  publier({ enAttente: items.length - traces, tracesEnAttente: traces, conflits: ici, conflitsAilleurs: conflits.length - ici });
 }
 
 // Une erreur sans réponse exploitable de la base (réseau, session expirée, serveur) : on réessaiera.
@@ -90,17 +96,17 @@ async function envoyer(genre, organisationId, charges) {
 
 async function pousser() {
   for (;;) {
-    const items = await base.file.where('[utilisateur_id+organisation_id]').equals(cleContexte()).sortBy('seq');
+    const items = await fileUtilisateur().limit(500).toArray();
     if (!items.length) return;
-    const genre = items[0].genre;
+    const { genre, organisation_id: organisationId } = items[0];
     const paquet = [];
     for (const item of items) {
-      if (item.genre !== genre || paquet.length >= LOT_ENVOI[genre]) break;
+      if (item.genre !== genre || item.organisation_id !== organisationId || paquet.length >= LOT_ENVOI[genre]) break;
       paquet.push(item);
     }
     let reponses;
     try {
-      reponses = await envoyer(genre, contexte.organisationId, paquet.map((i) => i.charge));
+      reponses = await envoyer(genre, organisationId, paquet.map((i) => i.charge));
     } catch (e) {
       if (!(e instanceof Interruption) && !(e instanceof TypeError)) throw e;
       for (const i of paquet) attentes.get(i.charge.id)?.(null);
@@ -129,7 +135,7 @@ async function pousser() {
       }
     });
     // La projection locale avait anticipé l'écriture refusée : on la relit à la base.
-    if (aRelire.vetements.length || aRelire.lots.length) await rafraichir(contexte.organisationId, aRelire);
+    if (aRelire.vetements.length || aRelire.lots.length) await rafraichir(organisationId, aRelire);
     for (const item of paquet) attentes.get(item.charge.id)?.(parId.get(item.charge.id) ?? null);
     await compter();
   }
@@ -150,6 +156,7 @@ async function tirer() {
     }
     await tirerChangements(organisationId, proteges);
   }
+  if (contexte.restreint) await purgerHorsPerimetre(organisationId, proteges);
 }
 
 async function cycle() {
@@ -238,11 +245,12 @@ function ecouter(organisationId, index) {
 
 // Démarre la synchronisation pour un utilisateur et une organisation. Renvoie l'arrêt.
 //   index : tenir l'index local (rôles de laverie) ; sinon seule la file est poussée.
-export async function demarrer({ utilisateurId, organisationId, index }) {
+//   restreint : périmètre qui change (laverie externe) ; ce qui n'est plus confié sort de l'index.
+export async function demarrer({ utilisateurId, organisationId, index, restreint = false }) {
   const precedent = await lireMeta('utilisateur');
   if (precedent !== utilisateurId) await viderIndex(); // appareil partagé : jamais l'index d'un autre
   await ecrireMeta('utilisateur', utilisateurId);
-  const moi = { utilisateurId, organisationId, index };
+  const moi = { utilisateurId, organisationId, index, restreint };
   contexte = moi;
   dernierReferentiel = 0;
   publier({

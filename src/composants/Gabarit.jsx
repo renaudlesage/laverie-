@@ -1,39 +1,14 @@
-import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider.jsx';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import { useDroits } from '../organisation/useDroits.js';
 import IndicateurConnexion from './IndicateurConnexion.jsx';
 import BoutonTheme from './BoutonTheme.jsx';
-import { useSynchro } from '../connexion/useConnexion.js';
-import { toutEffacer } from '../hors-ligne/base.js';
-import { lireEtat, synchroniser } from '../hors-ligne/synchro.js';
+import { useSortie } from '../hors-ligne/useSortie.js';
 
 export default function Gabarit() {
-  const { deconnexion } = useAuth();
   const { organisation, adhesions } = useOrganisation();
   const { voitReferentiels, livre } = useDroits();
-  const { enLigne } = useSynchro();
-  const [sortie, setSortie] = useState(false);
-
-  // L'appareil peut être partagé : l'index local et la file sont effacés à la déconnexion.
-  async function sortir() {
-    setSortie(true);
-    if (enLigne) await synchroniser(); // ce qui peut partir part avant de tout effacer
-    const { enAttente, tracesEnAttente } = lireEtat();
-    const nonEnvoyes = enAttente + tracesEnAttente;
-    if (
-      nonEnvoyes > 0 &&
-      !window.confirm(
-        `${nonEnvoyes} écriture(s) ne sont pas encore envoyées${enLigne ? '' : ' (hors ligne)'} et seront perdues. Se déconnecter quand même ?`,
-      )
-    ) {
-      setSortie(false);
-      return;
-    }
-    await toutEffacer();
-    await deconnexion();
-  }
+  const { sortir, enCours: sortie } = useSortie();
 
   return (
     <div className="gabarit">

@@ -2,6 +2,9 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.jsx';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import Chargement from '../composants/Chargement.jsx';
+import { base } from '../hors-ligne/base.js';
+import { useLocal } from '../hors-ligne/local.js';
+import { useSortie } from '../hors-ligne/useSortie.js';
 
 const LIBELLES_ROLE = {
   admin: 'Administrateur',
@@ -18,7 +21,20 @@ function schemaAbsent(erreur) {
 }
 
 export default function ChoixOrganisation() {
-  const { utilisateur, deconnexion } = useAuth();
+  const { utilisateur } = useAuth();
+  const { sortir, enCours: sortie } = useSortie();
+  // Écritures pas encore envoyées, par zone (prestataire multi-zones).
+  const enAttente = useLocal(
+    async () => {
+      const parZone = {};
+      await base.file
+        .filter((i) => i.utilisateur_id === utilisateur?.id && !['lecture', 'signalement'].includes(i.genre))
+        .each((i) => (parZone[i.organisation_id] = (parZone[i.organisation_id] ?? 0) + 1));
+      return parZone;
+    },
+    [utilisateur?.id],
+    {},
+  );
   const { adhesions, organisation, chargement, erreur, recharger, choisir } = useOrganisation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,7 +72,10 @@ export default function ChoixOrganisation() {
               }}
             >
               <span className="choix-titre">{m.organisation.nom}</span>
-              <span className="choix-detail">{LIBELLES_ROLE[m.role] ?? m.role}</span>
+              <span className="choix-detail">
+                {[LIBELLES_ROLE[m.role] ?? m.role, m.site?.nom].filter(Boolean).join(' · ')}
+                {enAttente[m.organisation.id] ? ` · ${enAttente[m.organisation.id]} en attente d’envoi` : ''}
+              </span>
             </button>
           </li>
         ))}
@@ -73,8 +92,8 @@ export default function ChoixOrganisation() {
           <button type="button" className="bouton" onClick={recharger}>
             Actualiser
           </button>
-          <button type="button" className="bouton bouton-discret" onClick={deconnexion}>
-            Déconnexion
+          <button type="button" className="bouton bouton-discret" onClick={sortir} disabled={sortie}>
+            {sortie ? 'Déconnexion…' : 'Déconnexion'}
           </button>
         </div>
       </div>

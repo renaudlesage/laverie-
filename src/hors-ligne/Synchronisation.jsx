@@ -91,10 +91,12 @@ function Conflit({ conflit, enLigne }) {
 export default function Synchronisation() {
   const { utilisateur } = useAuth();
   const { organisation } = useOrganisation();
-  const { enLigne, enAttente, tracesEnAttente, enCours, derniereSynchro, erreur, pret } = useSynchro();
+  const { enLigne, enAttente, tracesEnAttente, enCours, derniereSynchro, erreur, pret, conflitsAilleurs } = useSynchro();
   const cle = [utilisateur.id, organisation.id];
   const conflits = useLocal(() => base.conflits.where('[utilisateur_id+organisation_id]').equals(cle).reverse().sortBy('n'), [cle.join()], []);
-  const file = useLocal(() => base.file.where('[utilisateur_id+organisation_id]').equals(cle).toArray(), [cle.join()], []);
+  // File de l'utilisateur, toutes zones : elle part quelle que soit la zone affichée.
+  const file = useLocal(() => base.file.filter((i) => i.utilisateur_id === utilisateur.id).toArray(), [utilisateur.id], []);
+  const autreZone = file.filter((i) => i.organisation_id !== organisation.id && !['lecture', 'signalement'].includes(i.genre)).length;
   const index = useLocal(() => base.vetements.where('organisation_id').equals(organisation.id).count(), [organisation.id], 0);
   const parGenre = file.reduce((acc, i) => ({ ...acc, [i.genre]: (acc[i.genre] ?? 0) + 1 }), {});
 
@@ -117,6 +119,7 @@ export default function Synchronisation() {
                 ]
                   .filter(Boolean)
                   .join(', ')}
+            {autreZone > 0 && ` (dont ${autreZone} pour une autre zone)`}
           </dd>
           <dt>Dernière synchronisation</dt>
           <dd className="mono">{heure(derniereSynchro)}</dd>
@@ -135,6 +138,11 @@ export default function Synchronisation() {
       </div>
 
       <h2>Conflits à résoudre ({conflits.length})</h2>
+      {conflitsAilleurs > 0 && (
+        <p className="message">
+          {conflitsAilleurs} conflit(s) dans une autre zone : <Link to="/organisation">changez de zone</Link> pour les voir.
+        </p>
+      )}
       {conflits.length === 0 ? (
         <p className="texte-secondaire">Aucun conflit : toutes les actions envoyées ont été acceptées.</p>
       ) : (
