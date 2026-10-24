@@ -4,7 +4,7 @@
 -- Chaque jour à 5 h 07 UTC (6 h 07 ou 7 h 07 en Belgique) ; la fonction n'envoie qu'une fois par
 -- jour et par zone, et seulement s'il y a de nouvelles alertes. Relancer remplace la planification.
 
-create extension if not exists pg_net;
+create extension if not exists pg_net with schema extensions;
 
 select cron.schedule('suivi-linge-resume-alertes', '7 5 * * *', $$
   select net.http_post(
