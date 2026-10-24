@@ -568,3 +568,8 @@ input:invalid:not(:placeholder-shown):not(:focus) { border-color: var(--etat-cha
 .grille-champs input { font-family: var(--mono); }
 .calage summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--sourdine); }
 .message-veille { border-left-color: var(--etat-veille); }
+
+.choix-radio { border: 1px solid var(--trait); border-radius: var(--rayon); padding: 10px 12px; margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.choix-radio legend { font-weight: 600; padding: 0 4px; }
+.choix-radio .champ-case { font-weight: 400; }
+.choix-radio input[type='radio'] { width: 24px; height: 24px; min-height: 0; accent-color: var(--encre); }

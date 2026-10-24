@@ -54,6 +54,7 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 4 | `supabase/migrations/0004_notices.sql` | Bucket privé `notices` et ses règles d'accès |
 | 5 | `supabase/migrations/0005_membres.sql` | Invitations, ajout de membres par e-mail, protection du dernier admin |
 | 6 | `supabase/migrations/0006_enrolement.sql` | Enrôlement, pose / retrait / remplacement de tags, import de l'existant (chaque écriture journalisée) |
+| 7 | `supabase/migrations/0007_reglages.sql` | Réglages de la zone : règle d'activation des articles, fenêtre anti-doublon |
 
 Puis vérifier avec `supabase/tests/rls.sql` : la dernière ligne doit afficher « Tous les tests RLS sont passés ». Le test travaille dans une transaction annulée, il ne laisse aucune donnée.
 
@@ -81,6 +82,10 @@ Onglet **Scanner** : mode **unitaire** (un scan ouvre la fiche) ou **rafale** (l
 - **NFC** : Chrome sur Android uniquement (bouton absent ailleurs). Lit l'UID du tag.
 - **Appareil photo du téléphone** : un QR de l'app (`https://<app>/v/<code>`) ouvre directement la fiche, après connexion.
 - Code inconnu : l'enrôlement est proposé aux admins et gestionnaires (formulaire au jalon M4).
+
+### Réglages de la zone
+
+*Paramètres → Organisation* (admin) : nom de la zone, règle d'activation des articles (au moins une limite, ou une limite pour chaque traitement actif) et fenêtre anti-doublon des lectures. Les choix provisoires faits en attendant le terrain sont listés dans `docs/CONCEPT.md` §2.
 
 ### Enrôlement et étiquettes (jalon M4)
 

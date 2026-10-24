@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useAuth } from '../auth/AuthProvider.jsx';
 
@@ -28,6 +28,9 @@ export function OrganisationProvider({ children }) {
   const [organisationId, setOrganisationId] = useState(lireChoix);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
+  // Utilisateur pour lequel les adhésions sont déjà chargées : les rechargements suivants
+  // (après un réglage modifié) se font sans écran de chargement, la page reste affichée.
+  const chargePour = useRef(null);
 
   const charger = useCallback(async () => {
     if (!utilisateur) {
@@ -35,7 +38,7 @@ export function OrganisationProvider({ children }) {
       setChargement(false);
       return;
     }
-    setChargement(true);
+    if (chargePour.current !== utilisateur.id) setChargement(true);
     setErreur(null);
     const { data, error } = await supabase
       .from('membres')
@@ -56,6 +59,7 @@ export function OrganisationProvider({ children }) {
         ecrireChoix(liste[0].organisation.id);
       }
     }
+    chargePour.current = utilisateur.id;
     setChargement(false);
   }, [utilisateur]);
 

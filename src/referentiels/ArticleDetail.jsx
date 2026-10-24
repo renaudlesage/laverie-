@@ -138,9 +138,19 @@ export default function ArticleDetail() {
   }
 
   const limitesEnregistrees = Object.values(limites).filter((l) => l.id).length;
+  // Règle de l'organisation (Paramètres → Organisation) ; la base la revérifie.
+  const tousTraitements = organisation.reglages?.activation_limites === 'tous_traitements';
+  const sansLimite = traitements.filter((t) => t.actif && !limites[t.id]?.id);
   const conditions = [
     { ok: !!article.notice_chemin, texte: 'Notice fabricant jointe' },
-    { ok: limitesEnregistrees > 0, texte: 'Au moins une limite de traitement enregistrée' },
+    tousTraitements
+      ? {
+          ok: sansLimite.length === 0,
+          texte: sansLimite.length
+            ? `Une limite pour chaque traitement actif — manquante : ${sansLimite.map((t) => t.libelle).join(', ')}`
+            : 'Une limite pour chaque traitement actif',
+        }
+      : { ok: limitesEnregistrees > 0, texte: 'Au moins une limite de traitement enregistrée' },
   ];
 
   return (

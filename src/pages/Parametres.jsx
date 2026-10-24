@@ -8,6 +8,7 @@ const ENTREES = [
   { chemin: 'porteurs', titre: 'Porteurs', detail: 'Pompiers, matricules, casiers, import CSV', droit: 'voitReferentiels' },
   { chemin: 'lecteurs', titre: 'Lecteurs', detail: 'Douchettes, caméras, NFC', droit: 'voitReferentiels' },
   { chemin: 'membres', titre: 'Membres', detail: 'Comptes, rôles, invitations', droit: 'estAdmin' },
+  { chemin: 'organisation', titre: 'Organisation', detail: 'Nom de la zone, règle d’activation des articles, anti-doublon', droit: 'estAdmin' },
 ];
 
 export default function Parametres() {

@@ -63,7 +63,7 @@ Règle transversale : **toute écriture métier passe par la file d'événements
 
 ## M6 — Laverie (circuits standard et contaminé)
 
-- Sacs de collecte (circuit standard ou contaminé), fermeture, expédition.
+- Sacs de collecte (circuit standard ou contaminé), fermeture, expédition. Décision provisoire : un sac est un contenant réutilisable portant des identifiants comme un vêtement, chaque tournée est un lot `sac_collecte` rattaché au sac (`docs/CONCEPT.md` §2).
 - Réception : rapprochement attendus / lus, tâches d'écart.
 - Lots de traitement : ouverture (traitement, programme, machine), ajout et retrait, clôture avec comptage, clôture « avortée » sans comptage.
 - Contrôle : conforme, à réparer, à réformer ; contrôle renforcé obligatoire pour les vêtements contaminés ou à leur limite.

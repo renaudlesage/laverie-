@@ -21,6 +21,7 @@ import Porteurs from './referentiels/Porteurs.jsx';
 import ImportPorteurs from './referentiels/ImportPorteurs.jsx';
 import Lecteurs from './referentiels/Lecteurs.jsx';
 import Membres from './referentiels/Membres.jsx';
+import Organisation from './referentiels/Organisation.jsx';
 import Scan from './pages/Scan.jsx';
 import FicheVetement from './vetements/FicheVetement.jsx';
 import Enrolement from './vetements/Enrolement.jsx';
@@ -77,6 +78,7 @@ export default function App() {
               <Route path="parametres/porteurs/import" element={<Protege droit="gerePorteurs"><ImportPorteurs /></Protege>} />
               <Route path="parametres/lecteurs" element={<Protege droit="voitReferentiels"><Lecteurs /></Protege>} />
               <Route path="parametres/membres" element={<Protege droit="estAdmin"><Membres /></Protege>} />
+              <Route path="parametres/organisation" element={<Protege droit="estAdmin"><Organisation /></Protege>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

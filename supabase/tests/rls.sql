@@ -1,6 +1,6 @@
 -- rls.sql — Tests d'isolation et d'immuabilité du journal (jalon M1).
 --
--- À coller tel quel dans le SQL Editor de Supabase, après les migrations 0001 à 0006.
+-- À coller tel quel dans le SQL Editor de Supabase, après les migrations 0001 à 0007.
 -- Tout se passe dans une transaction annulée à la fin : aucune donnée ne reste en base.
 -- Succès : la dernière ligne affiche « Tous les tests RLS sont passés ».
 -- Échec : l'exécution s'arrête sur une erreur « ÉCHEC : … » qui décrit le test.
@@ -45,6 +45,18 @@ begin
 exception
   when sqlstate 'P0099' then raise;
   when others then return sqlstate;
+end;
+$$;
+
+-- Refus d'une règle métier : l'erreur doit être une violation de contrainte (23514),
+-- pas une erreur de droits ou de syntaxe qui masquerait un défaut.
+create function pg_temp.regle_refuse(requete text, description text) returns void language plpgsql as $$
+declare
+  code text := pg_temp.doit_echouer(requete, description);
+begin
+  if code <> '23514' then
+    raise exception 'ÉCHEC : % (erreur % au lieu d''un refus métier 23514)', description, code;
+  end if;
 end;
 $$;
 
@@ -441,21 +453,21 @@ begin
     'clé étrangère composite : un vêtement de A ne peut pas utiliser un article de B');
 
   -- Invariant 9 : article non activable sans notice ni limites.
-  perform pg_temp.doit_echouer(
+  perform pg_temp.regle_refuse(
     $q$insert into public.articles (organisation_id, designation, notice_chemin, actif) values ('a0000000-0000-4000-8000-000000000000', 'Sans limite', 'x.pdf', true)$q$,
     'article activé sans limites');
-  perform pg_temp.doit_echouer(
+  perform pg_temp.regle_refuse(
     $q$update public.articles set notice_chemin = null where id = 'a3000000-0000-4000-8000-000000000001'$q$,
     'article actif dont on retire la notice');
-  perform pg_temp.doit_echouer(
+  perform pg_temp.regle_refuse(
     $q$delete from public.articles_limites where article_id = 'a3000000-0000-4000-8000-000000000001'$q$,
     'dernière limite retirée d''un article actif');
 
   -- Invariant 7 : pas de traitement du circuit standard dans un lot contaminé.
-  perform pg_temp.doit_echouer(
+  perform pg_temp.regle_refuse(
     $q$insert into public.lots (organisation_id, type, circuit, traitement_id) select organisation_id, 'traitement', 'contamine', id from public.traitements where organisation_id = 'a0000000-0000-4000-8000-000000000000' and code = 'nettoyage_sec'$q$,
     'lot contaminé avec un traitement réservé au circuit standard');
-  perform pg_temp.doit_echouer(
+  perform pg_temp.regle_refuse(
     $q$insert into public.lots (organisation_id, type, circuit, traitement_id) select organisation_id, 'traitement', 'standard', id from public.traitements where organisation_id = 'a0000000-0000-4000-8000-000000000000' and code = 'decontamination'$q$,
     'lot standard avec un traitement réservé au circuit contaminé');
 
@@ -466,7 +478,7 @@ begin
     'un identifiant actif est unique par organisation et technologie');
 
   -- Laverie externe rattachée à un site de type laverie_externe.
-  perform pg_temp.doit_echouer(
+  perform pg_temp.regle_refuse(
     $q$insert into public.membres (organisation_id, user_id, role, site_id) values ('a0000000-0000-4000-8000-000000000000', 'cccccccc-0000-4000-8000-000000000001', 'laverie_externe', 'a1000000-0000-4000-8000-000000000001')$q$,
     'laverie externe rattachée à un poste');
 end;
@@ -509,14 +521,14 @@ begin
   resultat := public.inviter_membre('a0000000-0000-4000-8000-000000000000',
     'test-rls-nouveau@exemple.invalid', 'laverie_externe', 'a1000000-0000-4000-8000-000000000003');
   perform pg_temp.verifier(resultat = 'invitation', 'admin : un e-mail inconnu donne une invitation');
-  perform pg_temp.doit_echouer(
+  perform pg_temp.regle_refuse(
     $q$select public.inviter_membre('a0000000-0000-4000-8000-000000000000', 'y@exemple.invalid', 'laverie_externe', 'a1000000-0000-4000-8000-000000000001')$q$,
     'invitation laverie externe sur un site qui n''est pas une laverie externe');
   -- Le dernier admin ne peut pas se retirer.
-  perform pg_temp.doit_echouer(
+  perform pg_temp.regle_refuse(
     $q$update public.membres set role = 'gestionnaire' where user_id = 'aaaaaaaa-0000-4000-8000-000000000001'$q$,
     'le dernier admin ne peut pas perdre son rôle');
-  perform pg_temp.doit_echouer(
+  perform pg_temp.regle_refuse(
     $q$delete from public.membres where user_id = 'aaaaaaaa-0000-4000-8000-000000000001'$q$,
     'le dernier admin ne peut pas être supprimé');
   reset role;
@@ -604,7 +616,7 @@ begin
     and exists (select 1 from public.identifiants where valeur = 'ZZZZZZZZ02' and actif)
     and (select count(*) from public.evenements where vetement_id = 'a5000000-0000-4000-8000-000000000010') = 5,
     'remplacement de tag : ancien retiré avec motif, nouveau posé, 5 événements conservés');
-  perform pg_temp.doit_echouer(format(
+  perform pg_temp.regle_refuse(format(
     $q$select public.retirer_tag('a0000000-0000-4000-8000-000000000000', '{"evenement_id": "%s", "identifiant_id": "%s", "motif": " "}')$q$,
     gen_random_uuid(), (select id from public.identifiants where valeur = 'ZZZZZZZZ02')), 'retrait sans motif');
   -- L'ancien code peut être réutilisé une fois retiré (index unique sur les seuls actifs).
@@ -633,6 +645,57 @@ begin
   perform pg_temp.devenir('aaaaaaaa-0000-4000-8000-000000000004');
   perform pg_temp.verifier(pg_temp.compter($q$select 1 from public.vetements where id = 'a5000000-0000-4000-8000-000000000010'$q$) = 0,
     'laverie externe : ne voit pas un vêtement enrôlé au poste');
+  reset role;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 9. Réglages de l'organisation (0007)
+-- ---------------------------------------------------------------------------
+
+do $$
+declare
+  n integer;
+begin
+  -- Seul l'admin modifie les réglages ; valeurs hors liste refusées.
+  perform pg_temp.devenir('aaaaaaaa-0000-4000-8000-000000000002');
+  update public.organisations set reglages = '{"activation_limites": "tous_traitements"}' where id = 'a0000000-0000-4000-8000-000000000000';
+  get diagnostics n = row_count;
+  perform pg_temp.verifier(n = 0, 'gestionnaire : ne modifie pas les réglages');
+  reset role;
+  perform pg_temp.devenir('aaaaaaaa-0000-4000-8000-000000000001');
+  perform pg_temp.regle_refuse(
+    $q$update public.organisations set reglages = '{"activation_limites": "aucune"}' where id = 'a0000000-0000-4000-8000-000000000000'$q$,
+    'règle d''activation inconnue');
+  perform pg_temp.regle_refuse(
+    $q$update public.organisations set reglages = '{"anti_doublon_ms": 10}' where id = 'a0000000-0000-4000-8000-000000000000'$q$,
+    'fenêtre anti-doublon hors bornes');
+  update public.organisations set reglages = '{"activation_limites": "tous_traitements", "anti_doublon_ms": 3000}'
+  where id = 'a0000000-0000-4000-8000-000000000000';
+  get diagnostics n = row_count;
+  perform pg_temp.verifier(n = 1, 'admin : règle « tous_traitements » enregistrée');
+
+  -- Règle « tous_traitements » : activation refusée tant qu'un traitement actif n'a pas de limite.
+  insert into public.articles (id, organisation_id, designation, notice_chemin)
+  values ('a3000000-0000-4000-8000-000000000009', 'a0000000-0000-4000-8000-000000000000', 'Gants', 'g.pdf');
+  insert into public.articles_limites (organisation_id, article_id, traitement_id, limite)
+  select organisation_id, 'a3000000-0000-4000-8000-000000000009', id, 30 from public.traitements
+  where organisation_id = 'a0000000-0000-4000-8000-000000000000' and code = 'lavage';
+  perform pg_temp.regle_refuse(
+    $q$update public.articles set actif = true where id = 'a3000000-0000-4000-8000-000000000009'$q$,
+    'règle tous_traitements : activation refusée avec une seule limite');
+  insert into public.articles_limites (organisation_id, article_id, traitement_id, limite)
+  select organisation_id, 'a3000000-0000-4000-8000-000000000009', id, 30 from public.traitements
+  where organisation_id = 'a0000000-0000-4000-8000-000000000000' and code <> 'lavage' and actif;
+  update public.articles set actif = true where id = 'a3000000-0000-4000-8000-000000000009';
+  perform pg_temp.regle_refuse(
+    $q$delete from public.articles_limites where article_id = 'a3000000-0000-4000-8000-000000000009' and traitement_id = (select id from public.traitements where organisation_id = 'a0000000-0000-4000-8000-000000000000' and code = 'sechage')$q$,
+    'règle tous_traitements : retrait d''une limite d''un traitement actif refusé');
+
+  -- Un article déjà actif sous l'ancienne règle reste modifiable.
+  update public.articles set designation = 'Veste d''intervention (modèle 2024)' where id = 'a3000000-0000-4000-8000-000000000001';
+  get diagnostics n = row_count;
+  perform pg_temp.verifier(n = 1, 'article actif antérieur à la règle : toujours modifiable');
   reset role;
 end;
 $$;

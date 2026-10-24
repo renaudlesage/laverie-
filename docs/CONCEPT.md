@@ -33,6 +33,15 @@ Chaque vêtement reçoit une identité numérique unique, indépendante de la te
 
 **Encore ouvert** : volumes (vêtements, pompiers, passages par semaine) ; zone pilote et sa laverie ; inventaire de l'existant chez la zone pilote ; suivi d'exposition lié au numéro d'intervention (option, avis prévention et DPO requis).
 
+**Décisions provisoires** (24 octobre 2026) — réponses génériques en attendant le terrain, toutes modifiables dans l'app sans développement :
+
+| Question | Choix par défaut | Où le changer |
+| --- | --- | --- |
+| Circuits des traitements | Lavage et séchage : les deux circuits ; nettoyage à sec : standard ; décontamination : contaminé | *Paramètres → Traitements* |
+| Activation d'un article | Notice + au moins une limite de traitement ; option « une limite pour chaque traitement actif » | *Paramètres → Organisation* |
+| Identification des sacs de collecte | Un sac est un contenant réutilisable qui porte un ou plusieurs identifiants, comme un vêtement (QR généré par l'app, code-barres ou NFC existant) ; chaque tournée crée un lot `sac_collecte` rattaché à ce sac | Mis en œuvre au jalon M6 |
+| Format des étiquettes | Modèles A4 et rouleaux, ou format personnalisé en mm | *Imprimer des étiquettes QR*, réglé par appareil |
+
 Hors périmètre V1 : facturation de la laverie, pilotage des machines, produits lessiviels.
 
 ## 3. Acteurs
