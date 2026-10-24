@@ -33,7 +33,7 @@ create type prive.etat_vetement as (
 );
 
 create function prive.exiger_statut(actuel public.statut_vetement, admis public.statut_vetement[], evenement public.type_evenement)
-returns void language plpgsql immutable as $$
+returns void language plpgsql immutable set search_path = '' as $$
 begin
   if actuel is null or not (actuel = any (admis)) then
     raise exception 'Transition impossible : « % » depuis le statut « % »', evenement, coalesce(actuel::text, 'aucun')
@@ -47,7 +47,7 @@ $$;
 create function prive.appliquer(
   e prive.etat_vetement, type public.type_evenement, site uuid, lot uuid, quand timestamptz, d jsonb, nominatif boolean
 ) returns prive.etat_vetement
-language plpgsql immutable as $$
+language plpgsql immutable set search_path = '' as $$
 declare
   r prive.etat_vetement := e;
 begin
