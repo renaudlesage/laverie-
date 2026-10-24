@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
@@ -5,6 +6,7 @@ import { useDroits } from '../organisation/useDroits.js';
 import IndicateurConnexion from './IndicateurConnexion.jsx';
 import BoutonTheme from './BoutonTheme.jsx';
 import { useSortie } from '../hors-ligne/useSortie.js';
+import { appliquerIcones, urlLogo } from '../lib/logo.js';
 
 export default function Gabarit() {
   const { organisation, adhesions, adhesion, recharger, oublier } = useOrganisation();
@@ -18,13 +20,21 @@ export default function Gabarit() {
     navigate('/plateforme');
   }
   const { sortir, enCours: sortie } = useSortie();
+  // Icône de l'application et de l'onglet : le logo de la zone ouverte.
+  useEffect(() => {
+    appliquerIcones(organisation?.id, organisation?.logo_le);
+  }, [organisation?.id, organisation?.logo_le]);
+  const logo = organisation && urlLogo(organisation.id, organisation.logo_le);
 
   return (
     <div className="gabarit">
       <header className="entete">
-        <div className="entete-titre">
-          <Link to="/" className="marque">Suivi linge</Link>
-          {organisation && <span className="organisation-courante">{organisation.nom}</span>}
+        <div className="entete-identite">
+          {logo && <img className="logo-zone" src={logo} alt="" />}
+          <div className="entete-titre">
+            <Link to="/" className="marque">Suivi linge</Link>
+            {organisation && <span className="organisation-courante">{organisation.nom}</span>}
+          </div>
         </div>
         <div className="entete-actions">
           {estPlateforme && (

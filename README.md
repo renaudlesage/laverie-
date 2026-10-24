@@ -62,8 +62,9 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 12 | `supabase/migrations/0012_porteurs.sql` | Restitution « libérée » (départ d'un porteur), `anonymiser_porteur` |
 | 13 | `supabase/migrations/0013_rapports.sql` | Rapports (passages, fin de vie, activité d'une laverie), réglage et journal du résumé e-mail des alertes |
 | 14 | `supabase/migrations/0014_plateforme.sql` | Espace Plateforme : super-administrateurs, clients, suspension, accès support tracé — puis `supabase/outils/premier_admin_plateforme.sql` une fois |
+| 15 | `supabase/migrations/0015_logos.sql` | Logo de chaque client (bucket public `logos`), icône de l'application |
 
-Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés »), `supabase/tests/alertes.sql` (« Tous les tests des alertes sont passés »), `supabase/tests/etancheite.sql` (« Tous les tests d'étanchéité sont passés »), `supabase/tests/porteurs.sql` (« Tous les tests des porteurs sont passés »), `supabase/tests/rapports.sql` (« Tous les tests des rapports sont passés ») et `supabase/tests/plateforme.sql` (« Tous les tests de la plateforme sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
+Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés »), `supabase/tests/alertes.sql` (« Tous les tests des alertes sont passés »), `supabase/tests/etancheite.sql` (« Tous les tests d'étanchéité sont passés »), `supabase/tests/porteurs.sql` (« Tous les tests des porteurs sont passés »), `supabase/tests/rapports.sql` (« Tous les tests des rapports sont passés ») `supabase/tests/plateforme.sql` (« Tous les tests de la plateforme sont passés ») et `supabase/tests/logos.sql` (« Tous les tests des logos sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
 
 ### Comptes et clients
 
@@ -228,6 +229,7 @@ supabase/
   tests/porteurs.sql         départ d'un pompier, restitution libérée, anonymisation
   tests/rapports.sql         rapports et droits, destinataires du résumé
   tests/plateforme.sql       clients, suspension, accès support (lecture seule, sans noms), super-administrateurs
+  tests/logos.sql            logo des clients : dépôt par l'admin de la zone ou la plateforme
   functions/resume-alertes/  fonction Edge : résumé quotidien des alertes par e-mail
   outils/                    premier admin de la plateforme, planification du résumé, remise à zéro d'une zone de test
   tests/local/               outillage pour un Postgres local (ne pas exécuter dans Supabase)
@@ -239,3 +241,7 @@ supabase/
 1. Ouvrir ce dépôt dans Claude Code.
 2. Demander : « Lis CLAUDE.md et docs/, puis réalise le jalon suivant du backlog. »
 3. Avancer jalon par jalon ; exécuter les migrations SQL fournies dans le SQL Editor de Supabase, dans l'ordre.
+
+## Logo des clients et icône de l'application
+
+L'administrateur de la zone (Réglages → Organisation) ou la plateforme (carte du client) dépose un logo (PNG, JPEG, WebP ou SVG, carré de préférence). Le navigateur en prépare les icônes (192, 512, « maskable » et Apple) dans le bucket public `logos`. Le logo s'affiche dans l'en-tête, devient l'icône de l'onglet, et le manifeste de l'application est servi par la fonction Vercel `api/manifest.js` avec ces icônes : un appareil qui installe l'application depuis une zone prend son logo. Une application déjà installée garde son icône jusqu'à sa réinstallation (ou la mise à jour automatique d'Android, qui peut prendre quelques jours).

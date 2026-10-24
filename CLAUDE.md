@@ -92,7 +92,7 @@ Une seule abstraction côté front : un **adaptateur** produit `{ technologie, v
   - couleurs d'état à sens fixe (`--etat-ok`, `--etat-veille`, `--etat-chaud`, `--etat-info`, `--etat-froid`), jamais décoratives ; un chiffre coloré signifie un état ;
   - teintes `--dom-*` pour le repérage seulement ; encre sur aplat = `--on-teinte`, jamais `#fff` en dur ;
   - `--mono` pour codes, références, heures, compteurs et petits libellés en capitales espacées ; `--rayon` 2 px ; seule ombre portée : `--ombre-flottant` ;
-  - thème : `data-theme="clair" | "sombre"` sur `<html>` (bouton Nuit/Jour), absent = système ;
+  - thème : `data-theme="clair" | "sombre"` sur `<html>` (bouton Clair/Sombre), absent = système ;
   - écart assumé : cibles tactiles de 56 px (`--cible-tactile`) pour l'usage avec des gants.
 - Indicateur permanent de connexion et du nombre d'événements en attente de synchronisation.
 

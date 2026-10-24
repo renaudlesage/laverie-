@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { messageErreur } from '../lib/erreurs.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import { ROLES, TECHNOLOGIES } from '../lib/libelles.js';
+import EditeurLogo from '../organisation/EditeurLogo.jsx';
 
 const ROLES_RESUME = ['admin', 'gestionnaire', 'operateur_laverie', 'auditeur'];
 
@@ -122,6 +123,11 @@ export default function Organisation() {
         </span>
         <input required value={nom} onChange={(e) => setNom(e.target.value)} />
       </label>
+
+      <fieldset className="pile">
+        <legend>Logo</legend>
+        <EditeurLogo org={organisation.id} logoLe={organisation.logo_le} onChange={recharger} />
+      </fieldset>
 
       <fieldset className="choix-radio">
         <legend>Activation d’un article</legend>

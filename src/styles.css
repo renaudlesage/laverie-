@@ -627,3 +627,25 @@ h3 { font-size: 15px; margin: 0; }
   .tableau-rapport { font-size: 11px; }
   .carte { break-inside: avoid; border: none; }
 }
+
+/* --- Logo du client --- */
+
+.entete-identite { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.logo-zone { width: 36px; height: 36px; object-fit: contain; flex: none; }
+.editeur-logo { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.logo-apercu {
+  width: 96px;
+  height: 96px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--trait);
+  border-radius: var(--rayon);
+  background: var(--surface-2);
+  font-size: 12px;
+  text-align: center;
+}
+.logo-apercu img { width: 88px; height: 88px; object-fit: contain; }
+.editeur-logo-compact .logo-apercu { width: 56px; height: 56px; }
+.editeur-logo-compact .logo-apercu img { width: 48px; height: 48px; }
+label.bouton.desactive { opacity: 0.5; pointer-events: none; }

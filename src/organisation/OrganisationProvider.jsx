@@ -77,7 +77,7 @@ export function OrganisationProvider({ children }) {
     const [{ data, error }, plateforme, support] = await Promise.all([
       supabase
         .from('membres')
-        .select('id, role, site_id, site:sites(nom), organisation:organisations(id, nom, type, reglages, support_autorise)')
+        .select('id, role, site_id, site:sites(nom), organisation:organisations(id, nom, type, reglages, support_autorise, logo_le)')
         .eq('user_id', utilisateur.id)
         .eq('actif', true),
       supabase.rpc('est_admin_plateforme'),

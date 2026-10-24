@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthProvider.jsx';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import Chargement from '../composants/Chargement.jsx';
 import BoutonTheme from '../composants/BoutonTheme.jsx';
+import EditeurLogo from '../organisation/EditeurLogo.jsx';
 
 const TYPES = { zone_secours: 'Zone de secours', autre: 'Autre' };
 const date = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-BE') : '—');
@@ -50,7 +51,7 @@ function ActionSaisie({ libelle, champ, placeholder, danger, onValider, desactiv
   );
 }
 
-function Client({ c, onAction }) {
+function Client({ c, onAction, onLogo }) {
   return (
     <li className={`carte ${c.suspendue_le ? 'carte-alerte etat-chaud' : ''}`}>
       <div className="entete-section">
@@ -64,6 +65,7 @@ function Client({ c, onAction }) {
         {TYPES[c.type] ?? c.type} · client depuis le {date(c.cree_le)}
         {c.suspendue_le && ` · suspendu le ${date(c.suspendue_le)} : ${c.motif_suspension}`}
       </p>
+      <EditeurLogo org={c.id} logoLe={c.logo_le} onChange={onLogo} compact />
       <ul className="tuiles">
         {[
           ['Vêtements', c.vetements],
@@ -235,7 +237,7 @@ export default function Plateforme() {
             ) : (
               <ul className="liste pile">
                 {clients.map((c) => (
-                  <Client key={c.id} c={c} onAction={onAction} />
+                  <Client key={c.id} c={c} onAction={onAction} onLogo={charger} />
                 ))}
               </ul>
             )}
