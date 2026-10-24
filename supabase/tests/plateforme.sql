@@ -37,6 +37,8 @@ insert into auth.users (id, email) values
   ('cccccccc-2000-4000-8000-000000000003', 'test-plateforme-externe@exemple.invalid'),
   ('cccccccc-2000-4000-8000-000000000004', 'test-plateforme-intrus@exemple.invalid');
 insert into public.plateforme_admins (user_id) values ('cccccccc-2000-4000-8000-000000000001');
+-- Les vrais super-administrateurs sont mis de côté le temps du test (annulé à la fin).
+update public.plateforme_admins set actif = false where user_id <> 'cccccccc-2000-4000-8000-000000000001';
 
 do $$
 declare
