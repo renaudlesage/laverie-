@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { messageErreur } from '../lib/erreurs.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
@@ -27,6 +27,17 @@ export default function Organisation() {
   const [resumeActif, setResumeActif] = useState(!!reglages.resume_alertes?.actif);
   const [resumeRoles, setResumeRoles] = useState(reglages.resume_alertes?.roles ?? ['admin', 'gestionnaire']);
   const [essai, setEssai] = useState(null);
+  const [supportAutorise, setSupportAutorise] = useState(!!organisation.support_autorise);
+  const [accesSupport, setAccesSupport] = useState([]);
+  useEffect(() => {
+    supabase
+      .from('acces_support')
+      .select('id, email, motif, debut, fin')
+      .eq('organisation_id', organisation.id)
+      .order('debut', { ascending: false })
+      .limit(10)
+      .then(({ data }) => setAccesSupport(data ?? []));
+  }, [organisation.id]);
   const [envoi, setEnvoi] = useState(false);
   const [message, setMessage] = useState(null);
 
@@ -78,6 +89,7 @@ export default function Organisation() {
       .from('organisations')
       .update({
         nom: nom.trim(),
+        support_autorise: supportAutorise,
         reglages: {
           ...reglages,
           activation_limites: regle,
@@ -190,6 +202,30 @@ export default function Organisation() {
           {essai === 'envoi' ? 'Envoi…' : 'M’envoyer un essai maintenant'}
         </button>
         {essai && essai !== 'envoi' && <p className={`message message-${essai.type}`}>{essai.texte}</p>}
+      </fieldset>
+
+      <fieldset className="pile">
+        <legend>Accès support de la plateforme</legend>
+        <label className="champ-case">
+          <input type="checkbox" checked={supportAutorise} onChange={(e) => setSupportAutorise(e.target.checked)} />
+          <span>Autoriser le support à consulter la zone pour vous aider (lecture seule, 2 h par accès, motif obligatoire)</span>
+        </label>
+        <small className="aide">
+          Le support ne voit jamais le nom des pompiers (matricule et casier seulement) et ne peut rien modifier. Retirer
+          l’autorisation coupe aussitôt tout accès en cours.
+        </small>
+        {accesSupport.length > 0 && (
+          <ul className="liste">
+            {accesSupport.map((a) => (
+              <li key={a.id} className="ligne-liste ligne-statique">
+                <span className="ligne-titre">{a.motif}</span>
+                <span className="ligne-detail mono">
+                  {a.email} · {new Date(a.debut).toLocaleString('fr-BE', { dateStyle: 'short', timeStyle: 'short' })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </fieldset>
 
       {message && <p className={`message message-${message.type}`}>{message.texte}</p>}

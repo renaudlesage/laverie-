@@ -10,6 +10,7 @@ import Alertes from './alertes/Alertes.jsx';
 import ListeVetements from './vetements/ListeVetements.jsx';
 import Inventaire from './inventaire/Inventaire.jsx';
 import Rapports from './rapports/Rapports.jsx';
+import Plateforme from './plateforme/Plateforme.jsx';
 import { MesVetements, PagePorteur } from './porteurs/PagesPorteur.jsx';
 import Connexion from './pages/Connexion.jsx';
 import ChoixOrganisation from './pages/ChoixOrganisation.jsx';
@@ -60,6 +61,14 @@ export default function App() {
         <OrganisationProvider>
           <Routes>
             <Route path="/connexion" element={<Connexion />} />
+            <Route
+              path="/plateforme"
+              element={
+                <ExigeSession>
+                  <Plateforme />
+                </ExigeSession>
+              }
+            />
             <Route
               path="/organisation"
               element={

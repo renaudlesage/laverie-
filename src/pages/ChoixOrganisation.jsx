@@ -1,4 +1,4 @@
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.jsx';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import Chargement from '../composants/Chargement.jsx';
@@ -35,13 +35,13 @@ export default function ChoixOrganisation() {
     [utilisateur?.id],
     {},
   );
-  const { adhesions, organisation, chargement, erreur, recharger, choisir } = useOrganisation();
+  const { adhesions, organisation, chargement, erreur, recharger, choisir, estPlateforme, zonesSuspendues } = useOrganisation();
   const navigate = useNavigate();
   const location = useLocation();
   const destination = location.state?.depuis?.pathname ?? '/';
 
   if (chargement) return <Chargement />;
-  if (adhesions.length === 1 && organisation) return <Navigate to={destination} replace />;
+  if (adhesions.length === 1 && organisation && !estPlateforme) return <Navigate to={destination} replace />;
 
   let corps;
   if (erreur) {
@@ -73,7 +73,7 @@ export default function ChoixOrganisation() {
             >
               <span className="choix-titre">{m.organisation.nom}</span>
               <span className="choix-detail">
-                {[LIBELLES_ROLE[m.role] ?? m.role, m.site?.nom].filter(Boolean).join(' · ')}
+                {[m.role === 'support' ? 'Accès support (lecture seule)' : LIBELLES_ROLE[m.role] ?? m.role, m.site?.nom].filter(Boolean).join(' · ')}
                 {enAttente[m.organisation.id] ? ` · ${enAttente[m.organisation.id]} en attente d’envoi` : ''}
               </span>
             </button>
@@ -87,7 +87,18 @@ export default function ChoixOrganisation() {
     <div className="page-centree">
       <div className="carte">
         <h1>Choisir l'organisation</h1>
+        {zonesSuspendues > 0 && (
+          <p className="message message-erreur">
+            {zonesSuspendues === 1 ? 'Une de vos zones est suspendue' : `${zonesSuspendues} de vos zones sont suspendues`} : contactez le
+            support de la plateforme.
+          </p>
+        )}
         {corps}
+        {estPlateforme && (
+          <Link to="/plateforme" className="bouton bouton-large">
+            Espace Plateforme (gestion des clients)
+          </Link>
+        )}
         <div className="rangee-actions">
           <button type="button" className="bouton" onClick={recharger}>
             Actualiser

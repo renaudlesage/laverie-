@@ -61,15 +61,13 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 11 | `supabase/migrations/0011_alertes.sql` | Alertes automatiques (seuils, âge, usure des tags, non revenu), tâche horaire `pg_cron`, `tableau_de_bord`, diffusion en direct |
 | 12 | `supabase/migrations/0012_porteurs.sql` | Restitution « libérée » (départ d'un porteur), `anonymiser_porteur` |
 | 13 | `supabase/migrations/0013_rapports.sql` | Rapports (passages, fin de vie, activité d'une laverie), réglage et journal du résumé e-mail des alertes |
+| 14 | `supabase/migrations/0014_plateforme.sql` | Espace Plateforme : super-administrateurs, clients, suspension, accès support tracé — puis `supabase/outils/premier_admin_plateforme.sql` une fois |
 
-Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés »), `supabase/tests/alertes.sql` (« Tous les tests des alertes sont passés »), `supabase/tests/etancheite.sql` (« Tous les tests d'étanchéité sont passés »), `supabase/tests/porteurs.sql` (« Tous les tests des porteurs sont passés ») et `supabase/tests/rapports.sql` (« Tous les tests des rapports sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
+Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés »), `supabase/tests/alertes.sql` (« Tous les tests des alertes sont passés »), `supabase/tests/etancheite.sql` (« Tous les tests d'étanchéité sont passés »), `supabase/tests/porteurs.sql` (« Tous les tests des porteurs sont passés »), `supabase/tests/rapports.sql` (« Tous les tests des rapports sont passés ») et `supabase/tests/plateforme.sql` (« Tous les tests de la plateforme sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
 
-### Comptes et première organisation
+### Comptes et clients
 
-La création de compte n'est pas ouverte au public.
-
-1. Créer l'utilisateur dans *Authentication → Users → Add user* (cocher *Auto Confirm User*).
-2. Ouvrir `supabase/amorcage.sql`, remplacer le nom de l'organisation et l'e-mail, l'exécuter dans le SQL Editor : l'organisation est créée avec ses traitements par défaut et l'utilisateur en devient l'administrateur.
+La création de compte n'est pas ouverte au public. Les clients (organisations) se créent dans l'**espace Plateforme** de l'app (voir plus bas). Pour un nouveau projet Supabase, désigner une fois le premier administrateur de la plateforme avec `supabase/outils/premier_admin_plateforme.sql` (la personne s'est connectée une fois). `supabase/amorcage.sql` reste disponible pour créer une organisation à la main.
 
 Ensuite, tout se fait dans l'app : *Paramètres → Membres → Ajouter*. Si la personne a déjà un compte, elle devient membre tout de suite ; sinon une invitation l'attend et devient une adhésion à sa première connexion par **« Lien par e-mail »** sur l'écran de connexion.
 
@@ -177,6 +175,17 @@ Onglet **Laverie** (admin, gestionnaire, opérateur laverie, laverie externe) :
 
 `supabase/outils/vider_zone.sql` (à coller dans le SQL Editor) efface vêtements, journal, lots, alertes et lectures **d'une seule zone**, désignée par son nom ; au choix, aussi les référentiels (sites, articles, porteurs, sacs, lecteurs). Les traitements, membres et réglages sont gardés. **Irréversible, réservé aux zones de test** : le journal, normalement en ajout seul, n'est ouvert que le temps du script. Ensuite, sur chaque appareil, se déconnecter puis se reconnecter.
 
+### Espace Plateforme (gestion des clients)
+
+Réservé aux **administrateurs de la plateforme** : lien *Plateforme* dans l'en-tête (ou *Espace Plateforme* sur l'écran de choix de la zone).
+
+- **Nouveau client** : nom, type, e-mail du premier administrateur. Compte existant → administrateur aussitôt ; sinon invitation : à sa première connexion par « Lien par e-mail », il devient administrateur. Les traitements par défaut sont créés avec la zone.
+- **Suivi** par client : vêtements en circulation, utilisateurs, passages du mois, alertes ouvertes, administrateurs, invitations en attente, dernière activité.
+- **Ajouter un administrateur** à un client (remplacement, aide au démarrage).
+- **Suspendre / réactiver** (motif obligatoire) : les membres d'une zone suspendue n'y ont plus accès (« zone suspendue : contactez le support »), données intactes ; l'administrateur de la zone ne peut pas lever la suspension.
+- **Accès support** : seulement si l'administrateur de la zone l'a autorisé (*Paramètres → Organisation → Accès support*) ; **lecture seule**, **2 heures**, motif obligatoire ; un bandeau le rappelle, *Quitter* le termine. Le support **ne voit jamais le nom des pompiers** et ne peut rien écrire. Chaque accès est tracé et visible de l'administrateur de la zone ; retirer l'autorisation coupe l'accès en cours.
+- **Administrateurs de la plateforme** : ajout (compte existant), retrait — jamais le dernier.
+
 ### Tests
 
 `npm test` lance les tests Vitest (normalisation des identifiants, détection des douchettes, résolution, lecture CSV, import, messages d'erreur, règles sur l'appareil, file et synchronisation hors ligne).
@@ -205,6 +214,7 @@ src/
   porteurs/                  fiche porteur, historique de dotation, départ et anonymisation
   inventaire/                inventaire d'un site et écarts
   rapports/                  passages, fin de vie, activité d'une laverie
+  plateforme/                espace Plateforme : clients, suspension, accès support, super-administrateurs
   hors-ligne/                base locale (Dexie), règles sur l'appareil, file, synchronisation, conflits
 public/                      icônes PWA
 supabase/
@@ -217,8 +227,9 @@ supabase/
   tests/etancheite.sql       prestataire multi-zones : vêtements confiés seulement, aucun nom, aucune écriture hors périmètre
   tests/porteurs.sql         départ d'un pompier, restitution libérée, anonymisation
   tests/rapports.sql         rapports et droits, destinataires du résumé
+  tests/plateforme.sql       clients, suspension, accès support (lecture seule, sans noms), super-administrateurs
   functions/resume-alertes/  fonction Edge : résumé quotidien des alertes par e-mail
-  outils/                    planification du résumé, remise à zéro d'une zone de test
+  outils/                    premier admin de la plateforme, planification du résumé, remise à zéro d'une zone de test
   tests/local/               outillage pour un Postgres local (ne pas exécuter dans Supabase)
   amorcage.sql               créer une organisation et son premier admin
 ```

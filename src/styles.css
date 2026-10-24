@@ -190,6 +190,11 @@ a { color: var(--etat-info); }
   border-bottom: 1px solid var(--trait);
   background: var(--surface);
 }
+.bandeau-support {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 12px;
+  background: var(--etat-info); color: var(--on-teinte); font-family: var(--mono); font-size: 12px;
+}
+.bandeau-support .bouton { color: var(--on-teinte); min-height: 32px; }
 .indicateur .pastille { width: 10px; height: 10px; border-radius: 50%; }
 .indicateur.en-ligne .pastille { background: var(--etat-ok); }
 .indicateur.hors-ligne { background: var(--etat-chaud); color: var(--on-teinte); }

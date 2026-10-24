@@ -7,6 +7,7 @@ export const ROLES = {
   operateur_laverie: 'Opérateur laverie',
   laverie_externe: 'Laverie externe',
   auditeur: 'Auditeur',
+  support: 'Support de la plateforme (lecture seule)',
 };
 
 export const TYPES_SITE = {

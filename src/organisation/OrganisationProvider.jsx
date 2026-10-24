@@ -50,6 +50,8 @@ export function OrganisationProvider({ children }) {
   const [organisationId, setOrganisationId] = useState(lireChoix);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
+  const [estPlateforme, setEstPlateforme] = useState(false);
+  const [zonesSuspendues, setZonesSuspendues] = useState(0);
   // Utilisateur pour lequel les adhésions sont déjà chargées : les rechargements suivants
   // (après un réglage modifié) se font sans écran de chargement, la page reste affichée.
   const chargePour = useRef(null);
@@ -61,20 +63,27 @@ export function OrganisationProvider({ children }) {
       return;
     }
     // Dernières adhésions connues d'abord (démarrage immédiat, hors ligne compris), puis la base.
+    // Le cache ne sert que s'il contient la zone choisie (un accès support n'y est jamais).
     const connues = lireAdhesions(utilisateur.id);
+    const choix = lireChoix();
     if (chargePour.current !== utilisateur.id) {
-      if (connues) {
+      if (connues && (!choix || connues.some((m) => m.organisation.id === choix))) {
         setAdhesions(connues);
         setAdhesionsDe(utilisateur.id);
         setChargement(false);
       } else setChargement(true);
     }
     setErreur(null);
-    const { data, error } = await supabase
-      .from('membres')
-      .select('id, role, site_id, site:sites(nom), organisation:organisations(id, nom, type, reglages)')
-      .eq('user_id', utilisateur.id)
-      .eq('actif', true);
+    const [{ data, error }, plateforme, support] = await Promise.all([
+      supabase
+        .from('membres')
+        .select('id, role, site_id, site:sites(nom), organisation:organisations(id, nom, type, reglages, support_autorise)')
+        .eq('user_id', utilisateur.id)
+        .eq('actif', true),
+      supabase.rpc('est_admin_plateforme'),
+      supabase.rpc('mes_acces_support'),
+    ]);
+    setEstPlateforme(plateforme.data === true);
     const enCache = error && lireAdhesions(utilisateur.id);
     if (enCache) {
       setAdhesions(enCache);
@@ -82,11 +91,22 @@ export function OrganisationProvider({ children }) {
       setErreur(error);
       setAdhesions([]);
     } else {
-      const liste = data
-        .filter((m) => m.organisation)
-        .sort((a, b) => a.organisation.nom.localeCompare(b.organisation.nom, 'fr'));
+      // Zone suspendue : l'adhésion existe, mais l'organisation n'est plus lisible.
+      setZonesSuspendues(data.filter((m) => !m.organisation).length);
+      const membre = data.filter((m) => m.organisation);
+      ecrireAdhesions(utilisateur.id, membre);
+      // Accès support en cours (plateforme) : « adhésion » de lecture seule, jamais mise en cache.
+      const supports = (support.data ?? [])
+        .filter((a) => !membre.some((m) => m.organisation.id === a.organisation_id))
+        .map((a) => ({
+          id: `support-${a.organisation_id}`,
+          role: 'support',
+          site_id: null,
+          support_fin: a.fin,
+          organisation: { id: a.organisation_id, nom: a.nom, type: a.type, reglages: a.reglages },
+        }));
+      const liste = [...membre, ...supports].sort((a, b) => a.organisation.nom.localeCompare(b.organisation.nom, 'fr'));
       setAdhesions(liste);
-      ecrireAdhesions(utilisateur.id, liste);
       // Une seule organisation : choix automatique.
       if (liste.length === 1) {
         setOrganisationId(liste[0].organisation.id);
@@ -110,6 +130,8 @@ export function OrganisationProvider({ children }) {
     organisation: adhesion?.organisation ?? null,
     role: adhesion?.role ?? null,
     chargement: chargement || (!!utilisateur && adhesionsDe !== utilisateur.id),
+    estPlateforme,
+    zonesSuspendues,
     erreur,
     recharger: charger,
     choisir: (id) => {

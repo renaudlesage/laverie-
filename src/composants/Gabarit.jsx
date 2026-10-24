@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import { useDroits } from '../organisation/useDroits.js';
 import IndicateurConnexion from './IndicateurConnexion.jsx';
@@ -6,8 +7,16 @@ import BoutonTheme from './BoutonTheme.jsx';
 import { useSortie } from '../hors-ligne/useSortie.js';
 
 export default function Gabarit() {
-  const { organisation, adhesions } = useOrganisation();
-  const { voitReferentiels, livre } = useDroits();
+  const { organisation, adhesions, adhesion, recharger, oublier } = useOrganisation();
+  const { voitReferentiels, livre, support, estPlateforme } = useDroits();
+  const navigate = useNavigate();
+
+  async function quitterSupport() {
+    await supabase.rpc('fermer_support', { org: organisation.id });
+    oublier();
+    await recharger();
+    navigate('/plateforme');
+  }
   const { sortir, enCours: sortie } = useSortie();
 
   return (
@@ -18,6 +27,9 @@ export default function Gabarit() {
           {organisation && <span className="organisation-courante">{organisation.nom}</span>}
         </div>
         <div className="entete-actions">
+          {estPlateforme && (
+            <Link to="/plateforme" className="bouton bouton-discret">Plateforme</Link>
+          )}
           {adhesions.length > 1 && (
             <Link to="/organisation" className="bouton bouton-discret">Changer</Link>
           )}
@@ -33,6 +45,17 @@ export default function Gabarit() {
         {livre && <NavLink to="/laverie">Laverie</NavLink>}
         {voitReferentiels && <NavLink to="/parametres">Réglages</NavLink>}
       </nav>
+      {support && (
+        <div className="bandeau-support" role="status">
+          <span>
+            Accès support en lecture seule, tracé — jusqu’à{' '}
+            {new Date(adhesion.support_fin).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          <button type="button" className="bouton bouton-discret" onClick={quitterSupport}>
+            Quitter
+          </button>
+        </div>
+      )}
       <IndicateurConnexion />
       <main className="contenu">
         <Outlet />
