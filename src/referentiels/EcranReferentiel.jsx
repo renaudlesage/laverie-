@@ -21,6 +21,7 @@ export default function EcranReferentiel({
   ouvrir,
   avantListe,
   apresEnregistrement,
+  avantEnregistrement,
   libelleAjout = 'Ajouter',
 }) {
   const { organisation } = useOrganisation();
@@ -48,6 +49,16 @@ export default function EcranReferentiel({
     for (const c of champs) {
       if (typeof valeurs[c.nom] === 'string') valeurs[c.nom] = valeurs[c.nom].trim() || null;
       if (edition.ligne && c.creationSeulement) delete valeurs[c.nom];
+    }
+    // Transformation propre à l'écran (normalisation d'un code, contrôle croisé…).
+    if (avantEnregistrement) {
+      const r = avantEnregistrement(valeurs);
+      if (r.erreur) {
+        setEnvoi(false);
+        setMessage({ type: 'erreur', texte: r.erreur });
+        return;
+      }
+      Object.assign(valeurs, r.valeurs);
     }
     const requete = edition.ligne
       ? supabase.from(table).update(valeurs).eq('id', edition.ligne.id)

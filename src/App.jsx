@@ -22,6 +22,14 @@ import ImportPorteurs from './referentiels/ImportPorteurs.jsx';
 import Lecteurs from './referentiels/Lecteurs.jsx';
 import Membres from './referentiels/Membres.jsx';
 import Organisation from './referentiels/Organisation.jsx';
+import Sacs from './referentiels/Sacs.jsx';
+import Laverie from './laverie/Laverie.jsx';
+import Collecte from './laverie/Collecte.jsx';
+import Reception from './laverie/Reception.jsx';
+import Lots from './laverie/Lots.jsx';
+import LotDetail from './laverie/LotDetail.jsx';
+import Controle from './laverie/Controle.jsx';
+import Livraison from './laverie/Livraison.jsx';
 import Scan from './pages/Scan.jsx';
 import FicheVetement from './vetements/FicheVetement.jsx';
 import Enrolement from './vetements/Enrolement.jsx';
@@ -79,6 +87,14 @@ export default function App() {
               <Route path="parametres/lecteurs" element={<Protege droit="voitReferentiels"><Lecteurs /></Protege>} />
               <Route path="parametres/membres" element={<Protege droit="estAdmin"><Membres /></Protege>} />
               <Route path="parametres/organisation" element={<Protege droit="estAdmin"><Organisation /></Protege>} />
+              <Route path="parametres/sacs" element={<Protege droit="voitReferentiels"><Sacs /></Protege>} />
+              <Route path="laverie" element={<Protege droit="livre"><Laverie /></Protege>} />
+              <Route path="laverie/collecte" element={<Protege droit="collecte"><Collecte /></Protege>} />
+              <Route path="laverie/reception" element={<Protege droit="gestesLaverie"><Reception /></Protege>} />
+              <Route path="laverie/lots" element={<Protege droit="gestesLaverie"><Lots /></Protege>} />
+              <Route path="laverie/lots/:id" element={<Protege droit="gestesLaverie"><LotDetail /></Protege>} />
+              <Route path="laverie/controle" element={<Protege droit="gestesLaverie"><Controle /></Protege>} />
+              <Route path="laverie/livraison" element={<Protege droit="livre"><Livraison /></Protege>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

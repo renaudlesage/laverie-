@@ -2,7 +2,7 @@
 
 Traçabilité du linge professionnel et de ses passages en laverie, multi-technologie (code-barres, QR, DataMatrix, NFC, puis RFID UHF). Premier marché : les zones de secours.
 
-> Statut : **jalons M0 à M5 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes ; enrôlement, étiquettes et import ; journal, projections, actions et fiche de vie). Prochaine étape : M6, laverie (circuits standard et contaminé).
+> Statut : **jalons M0 à M6 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes ; enrôlement, étiquettes et import ; journal, projections, actions et fiche de vie ; laverie, circuits standard et contaminé). Prochaine étape : M7, fonctionnement hors-ligne.
 
 ## Documents
 
@@ -56,8 +56,9 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 6 | `supabase/migrations/0006_enrolement.sql` | Enrôlement, pose / retrait / remplacement de tags, import de l'existant (chaque écriture journalisée) |
 | 7 | `supabase/migrations/0007_reglages.sql` | Réglages de la zone : règle d'activation des articles, fenêtre anti-doublon |
 | 8 | `supabase/migrations/0008_journal.sql` | Machine à états, `ingerer_evenements`, annulation, `recalculer_vetement` (rejeu du journal) |
+| 9 | `supabase/migrations/0009_laverie.sql` | Sacs, collecte, réception, lots de traitement (comptage à la clôture), contrôle, livraison, `operer_lots` |
 
-Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés ») et `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
+Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés ») `supabase/tests/journal.sql` (« Tous les tests du journal sont passés ») et `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
 
 ### Comptes et première organisation
 
@@ -103,6 +104,18 @@ Onglet **Scanner** : mode **unitaire** (un scan ouvre la fiche) ou **rafale** (l
 - **Attribution refusée** si une limite de passages ou l'âge maximal est atteint, sauf contrôle renforcé (jalon M6) ou réforme.
 - **Exporter la fiche de vie (CSV)** : identité, passages, identifiants et historique complet, prêt pour Excel.
 
+### Laverie (jalon M6)
+
+Onglet **Laverie** (admin, gestionnaire, opérateur laverie, laverie externe) :
+
+- **Sacs** (*Paramètres → Sacs*) : chaque sac a un nom, un circuit (standard ou contaminé) et un code (QR généré ou code existant), imprimable depuis l'écran. Un code désigne un seul objet : jamais à la fois un sac et un vêtement.
+- **Collecte** (au poste) : scanner ou choisir le sac, *Ouvrir une tournée*, scanner les vêtements en rafale, *Mettre dans le sac*, puis *Fermer et expédier* vers une laverie.
+- **Réception** : choisir la laverie de travail (retenue sur l'appareil ; imposée pour une laverie externe), scanner le sac reçu puis ses vêtements. Les manquants, les vêtements en trop et les codes inconnus deviennent des **alertes**.
+- **Lots de traitement** : *Nouveau lot* (circuit, traitement compatible, programme, machine), ajout par scan, puis **Clôturer** — chaque vêtement gagne **un** passage sur le traitement du lot — ou **Avorter** (rien n'est compté).
+- **Contrôle** : conforme, à réparer (puis *Réparé*), à réformer, motif obligatoire hors conformité. Le **contrôle renforcé** est exigé pour un vêtement contaminé ou ayant atteint une limite.
+- **Livraison** : prêts à livrer regroupés par poste du pompier attitré (un clic par poste), ou livraison par scan vers un poste choisi.
+- **Circuits séparés** : un vêtement contaminé est refusé dans un sac ou un lot standard, et inversement ; le refus crée une alerte *mélange de circuits*.
+
 ### Tests
 
 `npm test` lance les tests Vitest (normalisation des identifiants, détection des douchettes, résolution, lecture CSV, import, messages d'erreur).
@@ -125,10 +138,14 @@ src/
   identification/            adaptateurs caméra, NFC, douchette ; normaliser(), resoudre() ; scan unitaire et rafale
   vetements/                 enrôlement, fiche vêtement (tags, historique), import de l'existant
   etiquettes/                planches d'étiquettes QR
+  laverie/                   collecte, réception, lots de traitement, contrôle, livraison
+  journal/                   envoi des événements et des opérations de lots
 public/                      icônes PWA
 supabase/
   migrations/                à exécuter dans l'ordre dans le SQL Editor
   tests/rls.sql              tests d'isolation et d'immuabilité du journal
+  tests/journal.sql          machine à états, idempotence, annulation, rejeu
+  tests/laverie.sql          cycle laverie, comptage, circuits, écarts, contrôle renforcé
   tests/local/               outillage pour un Postgres local (ne pas exécuter dans Supabase)
   amorcage.sql               créer une organisation et son premier admin
 ```

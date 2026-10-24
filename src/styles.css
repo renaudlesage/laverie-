@@ -583,3 +583,13 @@ h3 { font-size: 15px; margin: 0; }
 .ligne-liste.selection { border-color: var(--trait-fort); border-width: 2px; background: var(--surface-2); }
 .historique-annuler { grid-column: 2; justify-self: start; padding-left: 0; color: var(--etat-chaud); }
 .historique-annulation { grid-column: 1 / -1; padding: 8px 0; }
+
+/* --- Laverie (M6) --- */
+
+.ligne-contaminee { border-left: 4px solid var(--etat-chaud); }
+.sans-marge { margin: 0; }
+.message ul { margin: 6px 0 0; padding-left: 18px; }
+.choix-site { display: flex; flex-direction: column; gap: 4px; }
+.groupe-livraison { padding: 8px 0; border-bottom: 1px solid var(--trait); display: flex; flex-direction: column; gap: 6px; }
+.groupe-livraison:last-child { border-bottom: 0; }
+.groupe-livraison p { margin: 0; }

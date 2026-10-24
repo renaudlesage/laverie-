@@ -1,6 +1,6 @@
 -- rls.sql — Tests d'isolation et d'immuabilité du journal (jalon M1).
 --
--- À coller tel quel dans le SQL Editor de Supabase, après les migrations 0001 à 0007.
+-- À coller tel quel dans le SQL Editor de Supabase, après les migrations 0001 à 0009.
 -- Tout se passe dans une transaction annulée à la fin : aucune donnée ne reste en base.
 -- Succès : la dernière ligne affiche « Tous les tests RLS sont passés ».
 -- Échec : l'exécution s'arrête sur une erreur « ÉCHEC : … » qui décrit le test.
@@ -112,14 +112,17 @@ where t.code = 'lavage' and a.id in ('a3000000-0000-4000-8000-000000000001', 'b3
 update public.articles set notice_chemin = organisation_id || '/' || id || '.pdf', actif = true
 where id in ('a3000000-0000-4000-8000-000000000001', 'b3000000-0000-4000-8000-000000000001');
 
-insert into public.lots (id, organisation_id, type, circuit, site_id, site_destination_id, traitement_id, statut) values
+insert into public.sacs (id, organisation_id, nom) values
+  ('a8000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000000', 'Sac test A');
+
+insert into public.lots (id, organisation_id, type, circuit, site_id, site_destination_id, traitement_id, statut, sac_id) values
   -- Sac expédié du poste A vers la laverie externe A1
   ('a4000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000000', 'sac_collecte', 'standard',
-   'a1000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000003', null, 'expedie'),
+   'a1000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000003', null, 'expedie', 'a8000000-0000-4000-8000-000000000001'),
   -- Lot de lavage à la laverie interne
   ('a4000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000000', 'traitement', 'standard',
    'a1000000-0000-4000-8000-000000000002', null,
-   (select id from public.traitements where organisation_id = 'a0000000-0000-4000-8000-000000000000' and code = 'lavage'), 'ouvert');
+   (select id from public.traitements where organisation_id = 'a0000000-0000-4000-8000-000000000000' and code = 'lavage'), 'ouvert', null);
 
 insert into public.vetements (id, organisation_id, article_id, site_id, porteur_id, lot_id, statut) values
   -- v1 : porté par Dupont au poste A, non confié à la laverie externe

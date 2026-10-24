@@ -48,3 +48,31 @@ export async function emettre(organisationId, evenements) {
     notifier();
   }
 }
+
+// Opérations sur les lots (ouvrir_sac, expedier_sac, receptionner_sac, ouvrir_lot, cloturer_lot,
+// avorter_lot). Rejouables : une opération déjà faite répond « doublon ». Même file qu'emettre au M7.
+export function operation(type, lotId, donnees = {}) {
+  return { id: nouvelId(), type, lot_id: lotId, survenu_le: new Date().toISOString(), ...donnees };
+}
+
+export async function operer(organisationId, operations) {
+  enAttente += operations.length;
+  notifier();
+  try {
+    const { data, error } = await supabase.rpc('operer_lots', { org: organisationId, operations });
+    if (error) throw error;
+    return data;
+  } finally {
+    enAttente -= operations.length;
+    notifier();
+  }
+}
+
+// Bilan d'un envoi groupé : { acceptes, doublons, rejets: [{ id, motif }] }.
+export function bilan(reponses) {
+  return {
+    acceptes: reponses.filter((r) => r.statut === 'accepte').length,
+    doublons: reponses.filter((r) => r.statut === 'doublon').length,
+    rejets: reponses.filter((r) => r.statut === 'rejete'),
+  };
+}

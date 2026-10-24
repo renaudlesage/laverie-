@@ -7,7 +7,8 @@ import { traiterLecture } from './traiterLecture.js';
 
 // Mode rafale : liste dédupliquée en direct, compteurs lus / attendus / inconnus, validation groupée.
 //   attendus : identifiants de vêtements attendus (bordereau d'un sac), facultatif
-//   onValider({ lus, inconnus }) : validation groupée, fournie par l'écran appelant
+//   onValider({ lus, inconnus }) : validation groupée, fournie par l'écran appelant. Renvoie la liste
+//   des vêtements refusés (identifiants) : eux seuls restent affichés ; ou false pour tout garder.
 export default function Rafale({ attendus = null, onValider, libelleValider = 'Valider', contexte }) {
   const { organisation } = useOrganisation();
   const [lus, setLus] = useState([]); // [{ vetementId, vetement, lecture }]
@@ -42,12 +43,12 @@ export default function Rafale({ attendus = null, onValider, libelleValider = 'V
 
   async function valider() {
     if (!onValider) return;
-    const ok = await onValider({ lus, inconnus });
-    if (ok !== false) {
-      signaler('trouve');
-      setLus([]);
-      setInconnus([]);
-    }
+    const refuses = await onValider({ lus, inconnus });
+    if (refuses === false) return;
+    const garder = Array.isArray(refuses) ? refuses : [];
+    signaler(garder.length ? 'erreur' : 'trouve');
+    setLus((l) => l.filter((x) => garder.includes(x.vetementId)));
+    setInconnus([]);
   }
 
   return (

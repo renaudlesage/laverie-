@@ -1,6 +1,6 @@
 -- journal.sql — Tests du journal, des projections et du recalcul (jalon M5).
 --
--- À coller tel quel dans le SQL Editor de Supabase, après les migrations 0001 à 0008.
+-- À coller tel quel dans le SQL Editor de Supabase, après les migrations 0001 à 0009.
 -- Tout se passe dans une transaction annulée à la fin : aucune donnée ne reste en base.
 -- Succès : la dernière ligne affiche « Tous les tests du journal sont passés ».
 -- Échec : l'exécution s'arrête sur une erreur « ÉCHEC : … » qui décrit le test.
@@ -177,9 +177,10 @@ begin
     'type', 'tag_pose', 'donnees', jsonb_build_object('technologie', 'qr', 'valeur', 'EEEEEEEE09')));
   perform pg_temp.verifier(r ->> 'statut' = 'rejete', 'aucun tag posé sur un vêtement réformé');
 
-  -- Un type de lot (jalon M6) n'est pas encore accepté depuis l'app.
-  r := pg_temp.un(pg_temp.evt('e7000000-0000-4000-8000-000000000012', 'e6000000-0000-4000-8000-000000000002', 'collecte'));
-  perform pg_temp.verifier(r ->> 'statut' = 'rejete' and r ->> 'code' = '42501', 'collecte : pas encore émise par l''app (jalon M6)');
+  -- Un passage ne s'émet jamais depuis l'app : seule la clôture d'un lot le produit.
+  r := pg_temp.un(jsonb_build_object('id', 'e7000000-0000-4000-8000-000000000012', 'vetement_id', 'e6000000-0000-4000-8000-000000000002',
+    'type', 'traitement', 'lot_id', 'e4000000-0000-4000-8000-000000000001'));
+  perform pg_temp.verifier(r ->> 'statut' = 'rejete' and r ->> 'code' = '42501', 'traitement : jamais émis directement par l''app');
   reset role;
 end;
 $$;

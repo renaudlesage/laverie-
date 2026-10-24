@@ -8,7 +8,7 @@ import BoutonTheme from './BoutonTheme.jsx';
 export default function Gabarit() {
   const { deconnexion } = useAuth();
   const { organisation, adhesions } = useOrganisation();
-  const { voitReferentiels } = useDroits();
+  const { voitReferentiels, livre } = useDroits();
 
   return (
     <div className="gabarit">
@@ -30,7 +30,8 @@ export default function Gabarit() {
       <nav className="navigation" aria-label="Navigation principale">
         <NavLink to="/" end>Accueil</NavLink>
         <NavLink to="/scan">Scanner</NavLink>
-        {voitReferentiels && <NavLink to="/parametres">Paramètres</NavLink>}
+        {livre && <NavLink to="/laverie">Laverie</NavLink>}
+        {voitReferentiels && <NavLink to="/parametres">Réglages</NavLink>}
       </nav>
       <IndicateurConnexion />
       <main className="contenu">

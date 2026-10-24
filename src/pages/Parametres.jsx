@@ -7,6 +7,7 @@ const ENTREES = [
   { chemin: 'articles', titre: 'Articles', detail: 'Catalogue, limites par traitement, notices', droit: 'voitReferentiels' },
   { chemin: 'porteurs', titre: 'Porteurs', detail: 'Pompiers, matricules, casiers, import CSV', droit: 'voitReferentiels' },
   { chemin: 'lecteurs', titre: 'Lecteurs', detail: 'Douchettes, caméras, NFC', droit: 'voitReferentiels' },
+  { chemin: 'sacs', titre: 'Sacs de collecte', detail: 'Sacs standard et contaminés, leurs codes', droit: 'voitReferentiels' },
   { chemin: 'membres', titre: 'Membres', detail: 'Comptes, rôles, invitations', droit: 'estAdmin' },
   { chemin: 'organisation', titre: 'Organisation', detail: 'Nom de la zone, règle d’activation des articles, anti-doublon', droit: 'estAdmin' },
 ];
