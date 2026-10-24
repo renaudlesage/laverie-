@@ -2,7 +2,7 @@
 
 Traçabilité du linge professionnel et de ses passages en laverie, multi-technologie (code-barres, QR, DataMatrix, NFC, puis RFID UHF). Premier marché : les zones de secours.
 
-> Statut : **jalons M0 à M4 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes ; enrôlement, étiquettes QR, tags et import de l'existant). Prochaine étape : M5, journal, projections et fiche vêtement.
+> Statut : **jalons M0 à M5 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes ; enrôlement, étiquettes et import ; journal, projections, actions et fiche de vie). Prochaine étape : M6, laverie (circuits standard et contaminé).
 
 ## Documents
 
@@ -55,8 +55,9 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 5 | `supabase/migrations/0005_membres.sql` | Invitations, ajout de membres par e-mail, protection du dernier admin |
 | 6 | `supabase/migrations/0006_enrolement.sql` | Enrôlement, pose / retrait / remplacement de tags, import de l'existant (chaque écriture journalisée) |
 | 7 | `supabase/migrations/0007_reglages.sql` | Réglages de la zone : règle d'activation des articles, fenêtre anti-doublon |
+| 8 | `supabase/migrations/0008_journal.sql` | Machine à états, `ingerer_evenements`, annulation, `recalculer_vetement` (rejeu du journal) |
 
-Puis vérifier avec `supabase/tests/rls.sql` : la dernière ligne doit afficher « Tous les tests RLS sont passés ». Le test travaille dans une transaction annulée, il ne laisse aucune donnée.
+Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés ») et `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
 
 ### Comptes et première organisation
 
@@ -93,6 +94,14 @@ Onglet **Scanner** : mode **unitaire** (un scan ouvre la fiche) ou **rafale** (l
 - **Enrôler** : article actif, taille, n° de série, site, nominatif, puis un ou plusieurs identifiants — étiquette QR scannée, code-barres ou tag NFC existant, ou QR généré à imprimer ensuite. Un code inconnu scanné ouvre directement l'enrôlement.
 - **Changer de tag** (fiche vêtement) : *Remplacer* ou *Retirer*, motif obligatoire. L'ancien tag reste dans l'historique ; les compteurs ne bougent pas.
 - **Importer l'existant** (*Accueil → Importer l'existant*) : CSV avec `article` (désignation ou référence d'un article actif), `taille`, `n° de série`, `nominatif` (oui/non), `site`, `mise en service` (JJ/MM/AAAA) et les codes déjà posés `code_barres`, `qr`, `datamatrix`, `nfc`. Rapport avant import : à créer, doublons (en base ou dans le fichier), formats non reconnus, lignes invalides. Un import interrompu se relance sans créer de doublon.
+
+### Journal et actions (jalon M5)
+
+- Fiche vêtement → **Actions**, selon le statut : attribuer (à un pompier), restituer, déclarer contaminé, déclarer perdu, retrouvé, réformer (motif obligatoire). Contamination aussi possible par la laverie.
+- Chaque action est un **événement** du journal, envoyé avec un identifiant produit sur l'appareil (aucun doublon si l'envoi est répété). Statut, site, porteur et compteurs en sont **déduits** : aucun écran ne les modifie directement.
+- **Corriger une erreur** : *Annuler* sur le dernier événement de l'historique, avec un motif. Pour remonter plus loin, annuler à rebours. L'événement annulé reste visible, barré.
+- **Attribution refusée** si une limite de passages ou l'âge maximal est atteint, sauf contrôle renforcé (jalon M6) ou réforme.
+- **Exporter la fiche de vie (CSV)** : identité, passages, identifiants et historique complet, prêt pour Excel.
 
 ### Tests
 

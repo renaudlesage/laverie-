@@ -8,6 +8,7 @@ export function useDroits() {
     gerePorteurs: role === 'admin' || role === 'gestionnaire',
     voitReferentiels: ['admin', 'gestionnaire', 'operateur_laverie', 'auditeur'].includes(role),
     enrole: role === 'admin' || role === 'gestionnaire',
+    laverie: role === 'operateur_laverie' || role === 'laverie_externe',
     voitNoms: ['admin', 'gestionnaire', 'operateur_laverie', 'auditeur', 'porteur'].includes(role),
   };
 }

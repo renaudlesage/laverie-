@@ -573,3 +573,13 @@ input:invalid:not(:placeholder-shown):not(:focus) { border-color: var(--etat-cha
 .choix-radio legend { font-weight: 600; padding: 0 4px; }
 .choix-radio .champ-case { font-weight: 400; }
 .choix-radio input[type='radio'] { width: 24px; height: 24px; min-height: 0; accent-color: var(--encre); }
+
+/* --- Actions sur un vêtement (M5) --- */
+
+h3 { font-size: 15px; margin: 0; }
+.grille-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
+.choix-porteur { display: flex; flex-direction: column; gap: 6px; }
+.choix-porteur label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+.ligne-liste.selection { border-color: var(--trait-fort); border-width: 2px; background: var(--surface-2); }
+.historique-annuler { grid-column: 2; justify-self: start; padding-left: 0; color: var(--etat-chaud); }
+.historique-annulation { grid-column: 1 / -1; padding: 8px 0; }

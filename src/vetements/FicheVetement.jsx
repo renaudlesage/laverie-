@@ -8,7 +8,9 @@ import { useDroits } from '../organisation/useDroits.js';
 import { formaterCode, nouvelId } from '../identification/codes.js';
 import { normaliserCodeApp } from '../identification/normalisation.js';
 import AjoutIdentifiant from './AjoutIdentifiant.jsx';
-import Historique from './Historique.jsx';
+import ActionsVetement from './ActionsVetement.jsx';
+import Historique, { detailEvenement, LIBELLES_EVENEMENTS } from './Historique.jsx';
+import { ficheVieCsv, telecharger } from './ficheVie.js';
 
 const MOTIFS = ['Perdu', 'Illisible', 'Usé', 'Endommagé', 'Décousu'];
 
@@ -122,6 +124,71 @@ export default function FicheVetement() {
     );
   }
 
+  // Passages par traitement, comparés aux limites effectives (surcharge par vêtement prioritaire).
+  function lignesCompteurs() {
+    const passages = Object.fromEntries(donnees.compteurs.map((c) => [c.traitement_id, c.passages]));
+    const limites = Object.fromEntries(donnees.limitesArticle.map((l) => [l.traitement_id, l]));
+    for (const l of donnees.limitesVetement) limites[l.traitement_id] = { ...limites[l.traitement_id], limite: l.limite, surcharge: true };
+    return donnees.traitements
+      .filter((t) => limites[t.id] || passages[t.id])
+      .map((t) => {
+        const l = limites[t.id];
+        const n = passages[t.id] ?? 0;
+        const etat = !l ? '' : n >= l.limite ? 'chaud' : n >= (l.limite * (l.seuil_alerte_pct ?? 80)) / 100 ? 'veille' : 'ok';
+        return { t, l, n, etat };
+      });
+  }
+
+  // La confirmation n'apparaît qu'une fois la fiche rechargée : jamais d'état périmé à l'écran.
+  async function apresAction(texte) {
+    await charger();
+    setMessage({ type: 'info', texte });
+  }
+
+  async function exporter() {
+    const { vetement: v, porteur } = donnees;
+    const [evts, porteursEvts] = await Promise.all([
+      supabase.from('evenements').select('numero, type, survenu_le, source, donnees, annule_par, site:sites(nom)').eq('vetement_id', id).order('numero'),
+      supabase.from('porteurs_anonymises').select('id, matricule'),
+    ]);
+    const matricules = Object.fromEntries((porteursEvts.data ?? []).map((p) => [p.id, p.matricule]));
+    const date = (d) => (d ? new Date(d).toLocaleString('fr-BE', { dateStyle: 'short', timeStyle: 'short' }) : '');
+    const nomsTraitements = Object.fromEntries(donnees.traitements.map((t) => [t.id, t.libelle]));
+    const contenu = ficheVieCsv({
+      fiche: [
+        ['Organisation', organisation.nom],
+        ['Article', v.article?.designation],
+        ['Référence', v.article?.reference],
+        ['Taille', v.taille],
+        ['N° de série', v.numero_serie],
+        ['Statut', STATUTS_VETEMENT[v.statut]],
+        ['Contaminé', v.contamine ? 'oui' : 'non'],
+        ['Site', v.site?.nom],
+        ['Porteur (matricule)', porteur?.matricule],
+        ['Mis en service le', v.mis_en_service_le ? new Date(v.mis_en_service_le).toLocaleDateString('fr-BE') : ''],
+        ['Identifiant interne', v.id],
+        ['Exporté le', date(new Date())],
+      ],
+      compteurs: lignesCompteurs().map(({ t, l, n }) => ({ traitement: t.libelle, passages: n, limite: l?.limite ?? '' })),
+      identifiants: donnees.identifiants.map((i) => ({
+        technologie: TECHNOLOGIES[i.technologie],
+        valeur: i.valeur,
+        pose_le: date(i.pose_le),
+        retire_le: date(i.retire_le),
+        motif: i.motif_retrait,
+      })),
+      evenements: (evts.data ?? []).map((e) => ({
+        date: date(e.survenu_le),
+        evenement: LIBELLES_EVENEMENTS[e.type] ?? e.type,
+        detail: detailEvenement(e, matricules) || (e.type === 'traitement' ? nomsTraitements[e.donnees?.traitement_id] ?? '' : ''),
+        site: e.site?.nom,
+        source: e.source,
+        annule: !!e.annule_par,
+      })),
+    });
+    telecharger(`fiche-de-vie-${(v.numero_serie || v.id.slice(0, 8)).replace(/[^\w-]+/g, '_')}.csv`, contenu);
+  }
+
   if (erreur) {
     return (
       <section className="carte">
@@ -133,17 +200,7 @@ export default function FicheVetement() {
   if (!donnees) return <section className="carte">Chargement…</section>;
 
   const { vetement: v, porteur } = donnees;
-  const passages = Object.fromEntries(donnees.compteurs.map((c) => [c.traitement_id, c.passages]));
-  const limites = Object.fromEntries(donnees.limitesArticle.map((l) => [l.traitement_id, l]));
-  for (const l of donnees.limitesVetement) limites[l.traitement_id] = { ...limites[l.traitement_id], limite: l.limite, surcharge: true };
-  const lignes = donnees.traitements
-    .filter((t) => limites[t.id] || passages[t.id])
-    .map((t) => {
-      const l = limites[t.id];
-      const n = passages[t.id] ?? 0;
-      const etat = !l ? '' : n >= l.limite ? 'chaud' : n >= (l.limite * (l.seuil_alerte_pct ?? 80)) / 100 ? 'veille' : 'ok';
-      return { t, l, n, etat };
-    });
+  const lignes = lignesCompteurs();
   const actifs = donnees.identifiants.filter((i) => i.actif);
   const retires = donnees.identifiants.filter((i) => !i.actif);
   const codesImprimables = actifs.filter((i) => i.technologie === 'qr' && normaliserCodeApp(i.valeur) === i.valeur).map((i) => i.valeur);
@@ -352,7 +409,13 @@ export default function FicheVetement() {
         )}
       </div>
 
-      <Historique vetementId={id} version={version} />
+      <ActionsVetement vetement={v} onFait={apresAction} />
+
+      <Historique vetementId={id} version={version} onChange={apresAction} />
+
+      <button type="button" className="bouton" onClick={exporter}>
+        Exporter la fiche de vie (CSV)
+      </button>
     </section>
   );
 }

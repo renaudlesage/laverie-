@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { abonnerFile, nombreEnAttente } from '../journal/journal.js';
 
 export function useEnLigne() {
   const [enLigne, setEnLigne] = useState(() => navigator.onLine);
@@ -14,8 +15,7 @@ export function useEnLigne() {
   return enLigne;
 }
 
-// Nombre d'événements en attente de synchronisation.
-// La file locale (Dexie) arrive au jalon M7 ; d'ici là elle est toujours vide.
+// Nombre d'événements en cours d'envoi (file persistée hors ligne au jalon M7).
 export function useFileAttente() {
-  return 0;
+  return useSyncExternalStore(abonnerFile, nombreEnAttente);
 }
