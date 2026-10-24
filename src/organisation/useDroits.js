@@ -12,6 +12,7 @@ export function useDroits() {
     // Laverie (M6) : collecte au poste, gestes de laverie, livraison.
     collecte: ['admin', 'gestionnaire', 'operateur_laverie'].includes(role),
     gestesLaverie: ['admin', 'operateur_laverie', 'laverie_externe'].includes(role),
+    rapports: ['admin', 'gestionnaire', 'operateur_laverie', 'auditeur', 'laverie_externe'].includes(role),
     inventaire: ['admin', 'gestionnaire', 'operateur_laverie'].includes(role),
     voitVetements: role !== 'porteur',
     livre: ['admin', 'gestionnaire', 'operateur_laverie', 'laverie_externe'].includes(role),

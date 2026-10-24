@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { messageErreur } from '../lib/erreurs.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
-import { TECHNOLOGIES } from '../lib/libelles.js';
+import { ROLES, TECHNOLOGIES } from '../lib/libelles.js';
+
+const ROLES_RESUME = ['admin', 'gestionnaire', 'operateur_laverie', 'auditeur'];
 
 export const REGLES_ACTIVATION = {
   au_moins_une: 'Au moins une limite de traitement',
@@ -22,8 +24,26 @@ export default function Organisation() {
   const [usurePct, setUsurePct] = useState(String(reglages.usure_tag_pct ?? 80));
   const [delaiCollecte, setDelaiCollecte] = useState(String(reglages.delai_collecte_jours ?? 2));
   const [delaiLaverie, setDelaiLaverie] = useState(String(reglages.delai_laverie_jours ?? 7));
+  const [resumeActif, setResumeActif] = useState(!!reglages.resume_alertes?.actif);
+  const [resumeRoles, setResumeRoles] = useState(reglages.resume_alertes?.roles ?? ['admin', 'gestionnaire']);
+  const [essai, setEssai] = useState(null);
   const [envoi, setEnvoi] = useState(false);
   const [message, setMessage] = useState(null);
+
+  async function envoyerEssai() {
+    setEssai('envoi');
+    const { data, error } = await supabase.functions.invoke('resume-alertes', { body: { essai: true, organisation_id: organisation.id } });
+    let texte = data?.erreur;
+    if (error) {
+      try {
+        texte = (await error.context?.json())?.erreur;
+      } catch {
+        // réponse illisible
+      }
+      texte ??= 'Envoi impossible pour le moment.';
+    }
+    setEssai(texte ? { type: 'erreur', texte } : { type: 'info', texte: `Résumé d’essai envoyé à ${data.a}.` });
+  }
 
   async function enregistrer(e) {
     e.preventDefault();
@@ -66,6 +86,7 @@ export default function Organisation() {
           usure_tag_pct: usure,
           delai_collecte_jours: collecte,
           delai_laverie_jours: laverie,
+          resume_alertes: { actif: resumeActif, roles: resumeRoles },
         },
       })
       .eq('id', organisation.id);
@@ -145,6 +166,30 @@ export default function Organisation() {
           Le seuil « fin de vie proche » se règle par article et par traitement (Paramètres → Articles). Les alertes liées au
           temps sont réévaluées chaque heure.
         </small>
+      </fieldset>
+
+      <fieldset className="pile">
+        <legend>Résumé quotidien des alertes par e-mail</legend>
+        <label className="champ-case">
+          <input type="checkbox" checked={resumeActif} onChange={(e) => setResumeActif(e.target.checked)} />
+          <span>Envoyer chaque matin un résumé des nouvelles alertes (seulement s’il y en a)</span>
+        </label>
+        <div className="grille-champs">
+          {ROLES_RESUME.map((r) => (
+            <label key={r} className="champ-case">
+              <input
+                type="checkbox"
+                checked={resumeRoles.includes(r)}
+                onChange={(e) => setResumeRoles(e.target.checked ? [...resumeRoles, r] : resumeRoles.filter((x) => x !== r))}
+              />
+              <span>{ROLES[r]}</span>
+            </label>
+          ))}
+        </div>
+        <button type="button" className="bouton" disabled={essai === 'envoi'} onClick={envoyerEssai}>
+          {essai === 'envoi' ? 'Envoi…' : 'M’envoyer un essai maintenant'}
+        </button>
+        {essai && essai !== 'envoi' && <p className={`message message-${essai.type}`}>{essai.texte}</p>}
       </fieldset>
 
       {message && <p className={`message message-${message.type}`}>{message.texte}</p>}

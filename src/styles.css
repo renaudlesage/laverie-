@@ -610,3 +610,15 @@ h3 { font-size: 15px; margin: 0; }
 .tuiles li.etat-chaud, .tuiles li.etat-veille { border-left: 4px solid var(--etat); }
 .filtres { display: flex; flex-wrap: wrap; gap: 6px; }
 .alerte { border-left: 4px solid var(--etat); }
+
+/* --- Rapports --- */
+
+.tableau-defilant { overflow-x: auto; }
+.tableau-rapport { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tableau-rapport th, .tableau-rapport td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--trait); vertical-align: top; }
+.tableau-rapport thead th { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sourdine); }
+.tableau-rapport .nombre { text-align: right; white-space: nowrap; }
+@media print {
+  .tableau-rapport { font-size: 11px; }
+  .carte { break-inside: avoid; border: none; }
+}

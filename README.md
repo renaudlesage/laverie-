@@ -60,8 +60,9 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 10 | `supabase/migrations/0010_synchro.sql` | Horodatage `modifie_le` pour le tirage incrémental, `signaler_melanges` (alertes des refus faits sur l'appareil) |
 | 11 | `supabase/migrations/0011_alertes.sql` | Alertes automatiques (seuils, âge, usure des tags, non revenu), tâche horaire `pg_cron`, `tableau_de_bord`, diffusion en direct |
 | 12 | `supabase/migrations/0012_porteurs.sql` | Restitution « libérée » (départ d'un porteur), `anonymiser_porteur` |
+| 13 | `supabase/migrations/0013_rapports.sql` | Rapports (passages, fin de vie, activité d'une laverie), réglage et journal du résumé e-mail des alertes |
 
-Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés »), `supabase/tests/alertes.sql` (« Tous les tests des alertes sont passés »), `supabase/tests/etancheite.sql` (« Tous les tests d'étanchéité sont passés ») et `supabase/tests/porteurs.sql` (« Tous les tests des porteurs sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
+Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés »), `supabase/tests/alertes.sql` (« Tous les tests des alertes sont passés »), `supabase/tests/etancheite.sql` (« Tous les tests d'étanchéité sont passés »), `supabase/tests/porteurs.sql` (« Tous les tests des porteurs sont passés ») et `supabase/tests/rapports.sql` (« Tous les tests des rapports sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
 
 ### Comptes et première organisation
 
@@ -156,6 +157,26 @@ Onglet **Laverie** (admin, gestionnaire, opérateur laverie, laverie externe) :
 - **Départ d'un pompier** : sur sa fiche, *Départ du porteur* → chaque vêtement est **restitué** (un vêtement nominatif redevient banalisé et réattribuable, même s'il était déjà au stock) ou **réformé** ; un vêtement en laverie se traite à son retour. Puis **Anonymiser** : nom, prénom, casier et lien au compte effacés, matricule remplacé par un code `ANONYME-…`, fiche désactivée. L'historique des vêtements reste entier (il ne contient que l'identifiant opaque). Irréversible. Pensez à retirer aussi son compte dans *Paramètres → Membres* s'il en avait un.
 - **Inventaire** (*Accueil → Faire un inventaire*, admin, gestionnaire, opérateur laverie) : choisir le site, scanner tout ce qui s'y trouve, valider. Rapport : présents, **trouvés en plus** (rattachés ailleurs ou perdus), **manquants** ; *Déclarer les manquants perdus*, *Remettre en stock les perdus retrouvés*, export CSV. Fonctionne **hors ligne**.
 
+### Rapports
+
+*Accueil → Rapports* (admin, gestionnaire, opérateur laverie, auditeur ; laverie externe : sa propre activité seulement). Export **CSV** de chaque tableau ; **Imprimer / PDF** pour une version papier.
+
+- **Passages** : passages de la période par article et traitement, et état du parc (moyenne, maximum, limite).
+- **Fin de vie** : vêtements à renouveler (usure ≥ seuil, ou fin de vie par l'âge dans N mois), synthèse par article et taille pour les commandes.
+- **Activité laverie** : pour une laverie et une période (le mois précédent par défaut), sacs et vêtements reçus, lots clôturés par traitement, détail des lots — pour vérifier une facture.
+
+### Résumé quotidien des alertes par e-mail
+
+*Paramètres → Organisation → Résumé quotidien* : chaque matin (≈ 7 h), un e-mail aux rôles choisis, seulement s'il y a eu de nouvelles alertes ; *M'envoyer un essai maintenant* pour vérifier. L'envoi passe par la fonction Edge `resume-alertes` (dossier `supabase/functions/`) et le service **Resend**. Mise en service, une seule fois :
+
+1. Créer un compte sur resend.com, y **vérifier le domaine** d'envoi (enregistrements DNS indiqués par Resend) et créer une **clé d'API**.
+2. Supabase → *Edge Functions → Secrets* : ajouter `RESEND_API_KEY` (la clé) et `RESUME_EXPEDITEUR` (ex. `Suivi linge <alertes@votre-domaine.be>`) ; facultatif `URL_APP` (adresse de l'app, pour le lien dans l'e-mail).
+3. La planification quotidienne est faite par `supabase/outils/planifier_resume.sql` (déjà exécuté sur le projet actuel ; à relancer pour un nouveau projet, en y mettant l'identifiant du projet).
+
+### Remettre une zone de test à zéro
+
+`supabase/outils/vider_zone.sql` (à coller dans le SQL Editor) efface vêtements, journal, lots, alertes et lectures **d'une seule zone**, désignée par son nom ; au choix, aussi les référentiels (sites, articles, porteurs, sacs, lecteurs). Les traitements, membres et réglages sont gardés. **Irréversible, réservé aux zones de test** : le journal, normalement en ajout seul, n'est ouvert que le temps du script. Ensuite, sur chaque appareil, se déconnecter puis se reconnecter.
+
 ### Tests
 
 `npm test` lance les tests Vitest (normalisation des identifiants, détection des douchettes, résolution, lecture CSV, import, messages d'erreur, règles sur l'appareil, file et synchronisation hors ligne).
@@ -183,6 +204,7 @@ src/
   alertes/                   tableau de bord, liste et acquittement des alertes
   porteurs/                  fiche porteur, historique de dotation, départ et anonymisation
   inventaire/                inventaire d'un site et écarts
+  rapports/                  passages, fin de vie, activité d'une laverie
   hors-ligne/                base locale (Dexie), règles sur l'appareil, file, synchronisation, conflits
 public/                      icônes PWA
 supabase/
@@ -194,6 +216,9 @@ supabase/
   tests/alertes.sql          ouverture et fermeture de chaque type d'alerte, acquittement, tableau de bord
   tests/etancheite.sql       prestataire multi-zones : vêtements confiés seulement, aucun nom, aucune écriture hors périmètre
   tests/porteurs.sql         départ d'un pompier, restitution libérée, anonymisation
+  tests/rapports.sql         rapports et droits, destinataires du résumé
+  functions/resume-alertes/  fonction Edge : résumé quotidien des alertes par e-mail
+  outils/                    planification du résumé, remise à zéro d'une zone de test
   tests/local/               outillage pour un Postgres local (ne pas exécuter dans Supabase)
   amorcage.sql               créer une organisation et son premier admin
 ```

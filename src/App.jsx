@@ -9,6 +9,7 @@ import Synchronisation from './hors-ligne/Synchronisation.jsx';
 import Alertes from './alertes/Alertes.jsx';
 import ListeVetements from './vetements/ListeVetements.jsx';
 import Inventaire from './inventaire/Inventaire.jsx';
+import Rapports from './rapports/Rapports.jsx';
 import { MesVetements, PagePorteur } from './porteurs/PagesPorteur.jsx';
 import Connexion from './pages/Connexion.jsx';
 import ChoixOrganisation from './pages/ChoixOrganisation.jsx';
@@ -84,6 +85,7 @@ export default function App() {
               <Route path="synchronisation" element={<Synchronisation />} />
               <Route path="alertes" element={<Alertes />} />
               <Route path="vetements" element={<Protege droit="voitVetements"><ListeVetements /></Protege>} />
+              <Route path="rapports" element={<Protege droit="rapports"><Rapports /></Protege>} />
               <Route path="inventaire" element={<Protege droit="inventaire"><Inventaire /></Protege>} />
               <Route path="porteurs/:id" element={<Protege droit="voitReferentiels"><PagePorteur /></Protege>} />
               <Route path="mes-vetements" element={<MesVetements />} />
