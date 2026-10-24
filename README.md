@@ -2,7 +2,7 @@
 
 Traçabilité du linge professionnel et de ses passages en laverie, multi-technologie (code-barres, QR, DataMatrix, NFC, puis RFID UHF). Premier marché : les zones de secours.
 
-> Statut : **jalons M0 à M3 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes). Prochaine étape : M4, enrôlement et étiquettes.
+> Statut : **jalons M0 à M4 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes ; enrôlement, étiquettes QR, tags et import de l'existant). Prochaine étape : M5, journal, projections et fiche vêtement.
 
 ## Documents
 
@@ -53,6 +53,7 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 3 | `supabase/migrations/0003_seeds.sql` | Traitements par défaut créés avec chaque organisation |
 | 4 | `supabase/migrations/0004_notices.sql` | Bucket privé `notices` et ses règles d'accès |
 | 5 | `supabase/migrations/0005_membres.sql` | Invitations, ajout de membres par e-mail, protection du dernier admin |
+| 6 | `supabase/migrations/0006_enrolement.sql` | Enrôlement, pose / retrait / remplacement de tags, import de l'existant (chaque écriture journalisée) |
 
 Puis vérifier avec `supabase/tests/rls.sql` : la dernière ligne doit afficher « Tous les tests RLS sont passés ». Le test travaille dans une transaction annulée, il ne laisse aucune donnée.
 
@@ -81,6 +82,13 @@ Onglet **Scanner** : mode **unitaire** (un scan ouvre la fiche) ou **rafale** (l
 - **Appareil photo du téléphone** : un QR de l'app (`https://<app>/v/<code>`) ouvre directement la fiche, après connexion.
 - Code inconnu : l'enrôlement est proposé aux admins et gestionnaires (formulaire au jalon M4).
 
+### Enrôlement et étiquettes (jalon M4)
+
+- **Étiquettes QR** (*Accueil → Imprimer des étiquettes QR*) : planches A4 (21 ou 24 étiquettes) ou rouleau 50 × 30 mm. Chaque étiquette ne porte qu'un code opaque de 10 caractères et l'adresse `/v/<code>`. Imprimer à l'échelle 100 %. « Emplacements déjà utilisés » permet de reprendre une planche entamée.
+- **Enrôler** : article actif, taille, n° de série, site, nominatif, puis un ou plusieurs identifiants — étiquette QR scannée, code-barres ou tag NFC existant, ou QR généré à imprimer ensuite. Un code inconnu scanné ouvre directement l'enrôlement.
+- **Changer de tag** (fiche vêtement) : *Remplacer* ou *Retirer*, motif obligatoire. L'ancien tag reste dans l'historique ; les compteurs ne bougent pas.
+- **Importer l'existant** (*Accueil → Importer l'existant*) : CSV avec `article` (désignation ou référence d'un article actif), `taille`, `n° de série`, `nominatif` (oui/non), `site`, `mise en service` (JJ/MM/AAAA) et les codes déjà posés `code_barres`, `qr`, `datamatrix`, `nfc`. Rapport avant import : à créer, doublons (en base ou dans le fichier), formats non reconnus, lignes invalides. Un import interrompu se relance sans créer de doublon.
+
 ### Tests
 
 `npm test` lance les tests Vitest (normalisation des identifiants, détection des douchettes, résolution, lecture CSV, import, messages d'erreur).
@@ -101,7 +109,8 @@ src/
   pages/                     connexion, choix d'organisation, accueil, paramètres, /v/:code
   referentiels/              écrans sites, traitements, articles, porteurs (+ import CSV), lecteurs, membres
   identification/            adaptateurs caméra, NFC, douchette ; normaliser(), resoudre() ; scan unitaire et rafale
-  vetements/                 fiche vêtement, entrée de l'enrôlement
+  vetements/                 enrôlement, fiche vêtement (tags, historique), import de l'existant
+  etiquettes/                planches d'étiquettes QR
 public/                      icônes PWA
 supabase/
   migrations/                à exécuter dans l'ordre dans le SQL Editor

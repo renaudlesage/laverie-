@@ -1,6 +1,6 @@
 -- rls.sql — Tests d'isolation et d'immuabilité du journal (jalon M1).
 --
--- À coller tel quel dans le SQL Editor de Supabase, après les migrations 0001 à 0005.
+-- À coller tel quel dans le SQL Editor de Supabase, après les migrations 0001 à 0006.
 -- Tout se passe dans une transaction annulée à la fin : aucune donnée ne reste en base.
 -- Succès : la dernière ligne affiche « Tous les tests RLS sont passés ».
 -- Échec : l'exécution s'arrête sur une erreur « ÉCHEC : … » qui décrit le test.
@@ -536,6 +536,106 @@ select pg_temp.verifier(
           and role = 'laverie_externe' and site_id = 'a1000000-0000-4000-8000-000000000003')
   and not exists (select 1 from public.invitations where lower(email) = 'test-rls-nouveau@exemple.invalid'),
   'à la création du compte, l''invitation devient une adhésion');
+
+-- ---------------------------------------------------------------------------
+-- 8. Enrôlement, tags et import (0006)
+-- ---------------------------------------------------------------------------
+
+do $$
+declare
+  article uuid := 'a3000000-0000-4000-8000-000000000001';
+  r jsonb;
+  vetement uuid;
+  ancien uuid;
+begin
+  -- Seuls admin et gestionnaire enrôlent.
+  foreach vetement in array array['aaaaaaaa-0000-4000-8000-000000000003'::uuid, 'aaaaaaaa-0000-4000-8000-000000000004',
+                                  'aaaaaaaa-0000-4000-8000-000000000006', 'bbbbbbbb-0000-4000-8000-000000000001'] loop
+    perform pg_temp.devenir(vetement);
+    perform pg_temp.doit_echouer(format(
+      $q$select public.enroler_vetement('a0000000-0000-4000-8000-000000000000', '{"evenement_id": "%s", "article_id": "%s"}')$q$,
+      gen_random_uuid(), article), format('utilisateur %s ne peut pas enrôler dans A', vetement));
+    reset role;
+  end loop;
+
+  perform pg_temp.devenir('aaaaaaaa-0000-4000-8000-000000000002');
+
+  -- Enrôlement avec deux identifiants : vêtement en stock, trois événements.
+  r := public.enroler_vetement('a0000000-0000-4000-8000-000000000000', jsonb_build_object(
+    'evenement_id', 'a7000000-0000-4000-8000-000000000001', 'vetement_id', 'a5000000-0000-4000-8000-000000000010',
+    'article_id', article, 'taille', 'XL', 'site_id', 'a1000000-0000-4000-8000-000000000001',
+    'identifiants', jsonb_build_array(
+      jsonb_build_object('evenement_id', 'a7000000-0000-4000-8000-000000000002', 'technologie', 'qr', 'valeur', 'ZZZZZZZZ01'),
+      jsonb_build_object('evenement_id', 'a7000000-0000-4000-8000-000000000003', 'technologie', 'nfc', 'valeur', '04AABBCC'))));
+  perform pg_temp.verifier(r ->> 'statut' = 'accepte', 'gestionnaire : enrôlement accepté');
+  perform pg_temp.verifier(
+    (select statut from public.vetements where id = 'a5000000-0000-4000-8000-000000000010') = 'en_stock'
+    and (select count(*) from public.evenements where vetement_id = 'a5000000-0000-4000-8000-000000000010') = 3
+    and (select count(*) from public.identifiants where vetement_id = 'a5000000-0000-4000-8000-000000000010' and actif) = 2,
+    'enrôlement : vêtement en stock, 3 événements, 2 identifiants actifs');
+
+  -- Idempotence : même UUID d'événement, aucun effet.
+  r := public.enroler_vetement('a0000000-0000-4000-8000-000000000000', jsonb_build_object(
+    'evenement_id', 'a7000000-0000-4000-8000-000000000001', 'article_id', article));
+  perform pg_temp.verifier(r ->> 'statut' = 'doublon' and (select count(*) from public.vetements where taille = 'XL') = 1,
+    'réenvoi du même enrôlement : doublon sans effet');
+
+  -- Identifiant déjà porté, article d'une autre organisation, UID NFC non hexadécimal : refusés.
+  perform pg_temp.doit_echouer(format(
+    $q$select public.enroler_vetement('a0000000-0000-4000-8000-000000000000', '{"evenement_id": "%s", "article_id": "%s", "identifiants": [{"evenement_id": "%s", "technologie": "qr", "valeur": "ZZZZZZZZ01"}]}')$q$,
+    gen_random_uuid(), article, gen_random_uuid()), 'identifiant déjà porté par un autre vêtement');
+  perform pg_temp.verifier((select count(*) from public.vetements where organisation_id = 'a0000000-0000-4000-8000-000000000000') = 5,
+    'enrôlement refusé : aucun vêtement créé à moitié');
+  perform pg_temp.doit_echouer(format(
+    $q$select public.enroler_vetement('a0000000-0000-4000-8000-000000000000', '{"evenement_id": "%s", "article_id": "b3000000-0000-4000-8000-000000000001"}')$q$,
+    gen_random_uuid()), 'article d''une autre organisation');
+  perform pg_temp.doit_echouer(format(
+    $q$select public.poser_tag('a0000000-0000-4000-8000-000000000000', '{"evenement_id": "%s", "vetement_id": "a5000000-0000-4000-8000-000000000010", "technologie": "nfc", "valeur": "04:aa"}')$q$,
+    gen_random_uuid()), 'UID NFC non canonique');
+
+  -- Remplacement : l'ancien tag est retiré avec son motif, le nouveau posé, l'historique reste.
+  select id into ancien from public.identifiants where valeur = 'ZZZZZZZZ01';
+  r := public.remplacer_tag('a0000000-0000-4000-8000-000000000000', jsonb_build_object(
+    'evenement_retrait_id', 'a7000000-0000-4000-8000-000000000004', 'evenement_pose_id', 'a7000000-0000-4000-8000-000000000005',
+    'identifiant_id', ancien, 'motif', 'Illisible', 'technologie', 'qr', 'valeur', 'ZZZZZZZZ02'));
+  perform pg_temp.verifier(
+    r ->> 'statut' = 'accepte'
+    and (select not actif and motif_retrait = 'Illisible' from public.identifiants where id = ancien)
+    and exists (select 1 from public.identifiants where valeur = 'ZZZZZZZZ02' and actif)
+    and (select count(*) from public.evenements where vetement_id = 'a5000000-0000-4000-8000-000000000010') = 5,
+    'remplacement de tag : ancien retiré avec motif, nouveau posé, 5 événements conservés');
+  perform pg_temp.doit_echouer(format(
+    $q$select public.retirer_tag('a0000000-0000-4000-8000-000000000000', '{"evenement_id": "%s", "identifiant_id": "%s", "motif": " "}')$q$,
+    gen_random_uuid(), (select id from public.identifiants where valeur = 'ZZZZZZZZ02')), 'retrait sans motif');
+  -- L'ancien code peut être réutilisé une fois retiré (index unique sur les seuls actifs).
+  r := public.poser_tag('a0000000-0000-4000-8000-000000000000', jsonb_build_object(
+    'evenement_id', 'a7000000-0000-4000-8000-000000000006', 'vetement_id', 'a5000000-0000-4000-8000-000000000003',
+    'technologie', 'qr', 'valeur', 'ZZZZZZZZ01'));
+  perform pg_temp.verifier(r ->> 'statut' = 'accepte', 'un code retiré peut être reposé ailleurs');
+
+  -- Import : une ligne refusée n'empêche pas les autres ; réimport = doublons.
+  r := public.importer_vetements('a0000000-0000-4000-8000-000000000000', jsonb_build_array(
+    jsonb_build_object('ligne', 2, 'evenement_id', 'a7000000-0000-4000-8000-000000000011', 'article_id', article,
+      'identifiants', jsonb_build_array(jsonb_build_object('evenement_id', 'a7000000-0000-4000-8000-000000000012', 'technologie', 'code_barres', 'valeur', 'EXIST001'))),
+    jsonb_build_object('ligne', 3, 'evenement_id', 'a7000000-0000-4000-8000-000000000013', 'article_id', article,
+      'identifiants', jsonb_build_array(jsonb_build_object('evenement_id', 'a7000000-0000-4000-8000-000000000014', 'technologie', 'qr', 'valeur', 'ZZZZZZZZ02'))),
+    jsonb_build_object('ligne', 4, 'evenement_id', 'a7000000-0000-4000-8000-000000000015', 'article_id', article)));
+  perform pg_temp.verifier(
+    (select array_agg(x ->> 'statut' order by (x ->> 'ligne')::int) from jsonb_array_elements(r) x) = array['cree', 'rejete', 'cree']
+    and (select count(*) from public.evenements where source = 'import') = 3,
+    'import : lignes 2 et 4 créées, ligne 3 rejetée (code déjà porté), événements source import');
+  r := public.importer_vetements('a0000000-0000-4000-8000-000000000000', jsonb_build_array(
+    jsonb_build_object('ligne', 2, 'evenement_id', 'a7000000-0000-4000-8000-000000000011', 'article_id', article)));
+  perform pg_temp.verifier(r -> 0 ->> 'statut' = 'doublon', 'réimport de la même ligne : doublon');
+  reset role;
+
+  -- La laverie externe ne voit pas le vêtement enrôlé au poste.
+  perform pg_temp.devenir('aaaaaaaa-0000-4000-8000-000000000004');
+  perform pg_temp.verifier(pg_temp.compter($q$select 1 from public.vetements where id = 'a5000000-0000-4000-8000-000000000010'$q$) = 0,
+    'laverie externe : ne voit pas un vêtement enrôlé au poste');
+  reset role;
+end;
+$$;
 
 rollback;
 

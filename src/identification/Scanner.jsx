@@ -120,8 +120,8 @@ export default function Scanner({ onLecture, actif = true }) {
     }
   }
 
-  function validerSaisie(e) {
-    e.preventDefault();
+  // Pas de <form> : le scanner peut être placé dans un formulaire (enrôlement).
+  function validerSaisie() {
     if (!saisie.trim()) return;
     recevoir({ technologie: null, valeur_brute: saisie, source: 'saisie' });
     setSaisie('');
@@ -167,7 +167,7 @@ export default function Scanner({ onLecture, actif = true }) {
           : 'prête — technologie déduite de la valeur'}
       </p>
 
-      <form className="scanner-saisie" onSubmit={validerSaisie}>
+      <div className="scanner-saisie">
         <input
           aria-label="Saisir un code"
           placeholder="Saisir un code"
@@ -176,11 +176,17 @@ export default function Scanner({ onLecture, actif = true }) {
           spellCheck={false}
           value={saisie}
           onChange={(e) => setSaisie(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              validerSaisie();
+            }
+          }}
         />
-        <button type="submit" className="bouton">
+        <button type="button" className="bouton" onClick={validerSaisie}>
           OK
         </button>
-      </form>
+      </div>
 
       {alerte && <p className="message message-erreur">{alerte}</p>}
 
