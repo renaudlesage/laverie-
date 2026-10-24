@@ -532,14 +532,16 @@ input:invalid:not(:placeholder-shown):not(:focus) { border-color: var(--etat-cha
   box-shadow: var(--ombre-flottant);
   flex: none;
 }
+/* Étiquette : encre noire sur blanc quel que soit le thème (impression). */
 .etiquette-qr {
   display: flex;
   align-items: center;
-  gap: 2mm;
-  padding: 2mm;
+  justify-content: center;
   overflow: hidden;
   outline: 1px dashed #c8ced5;
 }
+.etiquette-qr-cote { justify-content: flex-start; }
+.etiquette-qr-dessous { flex-direction: column; }
 .etiquette-qr-image { flex: none; }
 .etiquette-qr-image svg { display: block; width: 100%; height: 100%; }
 .etiquette-qr-code { font-family: var(--mono); font-weight: 700; line-height: 1.2; white-space: nowrap; }
@@ -554,7 +556,15 @@ input:invalid:not(:placeholder-shown):not(:focus) { border-color: var(--etat-cha
   .etiquette-qr { outline: none; }
 }
 
-/* Aperçu réduit des planches sur petit écran (l'impression reste à l'échelle 1). */
-@media screen and (max-width: 860px) {
-  .planche { zoom: 0.42; }
+/* Aperçu à l'écran mis à l'échelle de la largeur disponible ; l'impression reste à l'échelle 1. */
+@media screen {
+  .planche { zoom: var(--zoom-apercu, 1); }
 }
+
+.format-personnalise { border: 1px solid var(--trait); border-radius: var(--rayon); padding: 10px 12px; margin: 0; }
+.format-personnalise legend { font-weight: 600; padding: 0 4px; }
+.grille-champs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 10px; }
+.grille-champs label { font-weight: 600; font-size: 13px; display: flex; flex-direction: column; gap: 4px; justify-content: flex-end; }
+.grille-champs input { font-family: var(--mono); }
+.calage summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--sourdine); }
+.message-veille { border-left-color: var(--etat-veille); }
