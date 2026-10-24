@@ -74,12 +74,19 @@ export function OrganisationProvider({ children }) {
       } else setChargement(true);
     }
     setErreur(null);
-    const [{ data, error }, plateforme, support] = await Promise.all([
+    const adhesionsServeur = (colonnes) =>
       supabase
         .from('membres')
-        .select('id, role, site_id, site:sites(nom), organisation:organisations(id, nom, type, reglages, support_autorise, logo_le)')
+        .select(`id, role, site_id, site:sites(nom), organisation:organisations(${colonnes})`)
         .eq('user_id', utilisateur.id)
-        .eq('actif', true),
+        .eq('actif', true);
+    // Base sans la migration 0015 (logo_le inconnue) : l'app fonctionne, sans logo.
+    const lireAdhesionsServeur = async () => {
+      const r = await adhesionsServeur('id, nom, type, reglages, support_autorise, logo_le');
+      return r.error?.code === '42703' ? adhesionsServeur('id, nom, type, reglages, support_autorise') : r;
+    };
+    const [{ data, error }, plateforme, support] = await Promise.all([
+      lireAdhesionsServeur(),
       supabase.rpc('est_admin_plateforme'),
       supabase.rpc('mes_acces_support'),
     ]);
