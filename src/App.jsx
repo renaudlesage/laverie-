@@ -7,6 +7,9 @@ import Gabarit from './composants/Gabarit.jsx';
 import DemarrageSynchro from './hors-ligne/DemarrageSynchro.jsx';
 import Synchronisation from './hors-ligne/Synchronisation.jsx';
 import Alertes from './alertes/Alertes.jsx';
+import ListeVetements from './vetements/ListeVetements.jsx';
+import Inventaire from './inventaire/Inventaire.jsx';
+import { MesVetements, PagePorteur } from './porteurs/PagesPorteur.jsx';
 import Connexion from './pages/Connexion.jsx';
 import ChoixOrganisation from './pages/ChoixOrganisation.jsx';
 import Accueil from './pages/Accueil.jsx';
@@ -80,6 +83,10 @@ export default function App() {
               <Route path="scan" element={<Scan />} />
               <Route path="synchronisation" element={<Synchronisation />} />
               <Route path="alertes" element={<Alertes />} />
+              <Route path="vetements" element={<Protege droit="voitVetements"><ListeVetements /></Protege>} />
+              <Route path="inventaire" element={<Protege droit="inventaire"><Inventaire /></Protege>} />
+              <Route path="porteurs/:id" element={<Protege droit="voitReferentiels"><PagePorteur /></Protege>} />
+              <Route path="mes-vetements" element={<MesVetements />} />
               <Route path="vetements/:id" element={<FicheVetement />} />
               <Route path="enrolement" element={<Protege droit="enrole"><Enrolement /></Protege>} />
               <Route path="vetements/import" element={<Protege droit="enrole"><ImportVetements /></Protege>} />

@@ -49,7 +49,7 @@ export default function FicheVetement() {
   const { id } = useParams();
   const location = useLocation();
   const { organisation } = useOrganisation();
-  const { voitNoms, enrole } = useDroits();
+  const { voitNoms, enrole, voitReferentiels } = useDroits();
   const [donnees, setDonnees] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [action, setAction] = useState(null); // null | { type: 'ajout' } | { type: 'retrait' | 'remplacement', identifiant }
@@ -293,7 +293,13 @@ export default function FicheVetement() {
           <dd>
             {porteur ? (
               <>
-                <span className="mono">{porteur.matricule}</span>
+                {voitReferentiels && v.porteur_id ? (
+                  <Link to={`/porteurs/${v.porteur_id}`} className="mono">
+                    {porteur.matricule}
+                  </Link>
+                ) : (
+                  <span className="mono">{porteur.matricule}</span>
+                )}
                 {porteur.nom && ` — ${[porteur.prenom, porteur.nom].filter(Boolean).join(' ')}`}
                 {porteur.casier && ` · casier ${porteur.casier}`}
               </>

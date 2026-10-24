@@ -27,8 +27,9 @@ export function appliquer(e, type, { site = null, lot = null, quand, d = {}, nom
       exigerStatut(e.statut, ['en_stock'], type);
       return { ...r, statut: 'en_service', porteur_id: d.porteur_id ?? null, site_id: site ?? e.site_id };
     case 'restitution':
-      exigerStatut(e.statut, ['en_service'], type);
-      return { ...r, statut: 'en_stock', porteur_id: nominatif ? e.porteur_id : null, site_id: site ?? e.site_id };
+      exigerStatut(e.statut, d.liberer ? ['en_service', 'en_stock'] : ['en_service'], type);
+      // Nominatif : reste lié à son porteur, sauf restitution « libérée » (départ du porteur).
+      return { ...r, statut: 'en_stock', porteur_id: nominatif && !d.liberer ? e.porteur_id : null, site_id: site ?? e.site_id };
     case 'contamination':
       exigerStatut(e.statut, ['en_service', 'en_stock', 'collecte', 'en_laverie'], type);
       return {

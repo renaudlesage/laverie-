@@ -23,6 +23,13 @@ describe('appliquer (copie de prive.appliquer)', () => {
     expect(e).toMatchObject({ statut: 'en_service', site_id: 'poste', porteur_id: 'p1' });
   });
 
+  it('restitution d’un vêtement nominatif : reste lié, sauf restitution libérée (départ)', () => {
+    const e = { ...base, statut: 'en_service', porteur_id: 'p1' };
+    expect(appliquer(e, 'restitution', { quand, nominatif: true }).porteur_id).toBe('p1');
+    expect(appliquer(e, 'restitution', { quand, nominatif: true, d: { liberer: true } }).porteur_id).toBeNull();
+    expect(appliquer(e, 'restitution', { quand, nominatif: false }).porteur_id).toBeNull();
+  });
+
   it('refuse une transition interdite avec le message de la base', () => {
     expect(() => appliquer({ ...base, statut: 'traite' }, 'ajout_lot', { lot: 'l1', quand })).toThrow(
       'Transition impossible : « ajout_lot » depuis le statut « traite »',

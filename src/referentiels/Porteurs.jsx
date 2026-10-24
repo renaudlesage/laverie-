@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import { useDroits } from '../organisation/useDroits.js';
@@ -9,6 +9,7 @@ import { useLignes } from './useLignes.js';
 export default function Porteurs() {
   const { organisation } = useOrganisation();
   const { estAdmin, gerePorteurs } = useDroits();
+  const navigate = useNavigate();
   const { lignes: sites } = useLignes('sites', { ordre: 'nom' });
   const [comptes, setComptes] = useState([]);
 
@@ -46,6 +47,7 @@ export default function Porteurs() {
       champs={champs}
       valeursInitiales={{ actif: true }}
       peutModifier={gerePorteurs}
+      ouvrir={(p) => navigate(`/porteurs/${p.id}`)}
       avantListe={
         gerePorteurs && (
           <p>
@@ -57,7 +59,7 @@ export default function Porteurs() {
       }
       resume={(p) => ({
         titre: [p.matricule, [p.prenom, p.nom].filter(Boolean).join(' ')].filter(Boolean).join(' — '),
-        detail: [nomsSites[p.site_id], p.casier && `casier ${p.casier}`].filter(Boolean).join(' · '),
+        detail: [nomsSites[p.site_id], p.casier && `casier ${p.casier}`, p.anonymise_le && 'anonymisé'].filter(Boolean).join(' · '),
       })}
     />
   );

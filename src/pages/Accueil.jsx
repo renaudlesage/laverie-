@@ -6,7 +6,7 @@ import TableauDeBord from '../alertes/TableauDeBord.jsx';
 
 export default function Accueil() {
   const { organisation, role } = useOrganisation();
-  const { voitReferentiels, enrole } = useDroits();
+  const { voitReferentiels, enrole, inventaire, voitVetements } = useDroits();
   return (
     <section className="pile">
       <div className="carte">
@@ -18,6 +18,21 @@ export default function Accueil() {
           <Link to="/scan" className="bouton bouton-principal bouton-large">
             Scanner un vêtement
           </Link>
+          {role === 'porteur' && (
+            <Link to="/mes-vetements" className="bouton bouton-large">
+              Mes vêtements
+            </Link>
+          )}
+          {voitVetements && (
+            <Link to="/vetements" className="bouton bouton-large">
+              Rechercher un vêtement
+            </Link>
+          )}
+          {inventaire && (
+            <Link to="/inventaire" className="bouton bouton-large">
+              Faire un inventaire
+            </Link>
+          )}
           {enrole && (
             <>
               <Link to="/enrolement" className="bouton bouton-large">

@@ -59,8 +59,9 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 9 | `supabase/migrations/0009_laverie.sql` | Sacs, collecte, réception, lots de traitement (comptage à la clôture), contrôle, livraison, `operer_lots` |
 | 10 | `supabase/migrations/0010_synchro.sql` | Horodatage `modifie_le` pour le tirage incrémental, `signaler_melanges` (alertes des refus faits sur l'appareil) |
 | 11 | `supabase/migrations/0011_alertes.sql` | Alertes automatiques (seuils, âge, usure des tags, non revenu), tâche horaire `pg_cron`, `tableau_de_bord`, diffusion en direct |
+| 12 | `supabase/migrations/0012_porteurs.sql` | Restitution « libérée » (départ d'un porteur), `anonymiser_porteur` |
 
-Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés »), `supabase/tests/alertes.sql` (« Tous les tests des alertes sont passés ») et `supabase/tests/etancheite.sql` (« Tous les tests d'étanchéité sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
+Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés »), `supabase/tests/alertes.sql` (« Tous les tests des alertes sont passés »), `supabase/tests/etancheite.sql` (« Tous les tests d'étanchéité sont passés ») et `supabase/tests/porteurs.sql` (« Tous les tests des porteurs sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
 
 ### Comptes et première organisation
 
@@ -148,6 +149,13 @@ Onglet **Laverie** (admin, gestionnaire, opérateur laverie, laverie externe) :
 - Écrans : tableau de bord de son périmètre, scanner, réception, lots, contrôle, livraison ; site de travail imposé. Pas de collecte, d'enrôlement ni de réglages.
 - **Prestataire multi-zones** : un même compte peut être « Laverie externe » dans plusieurs zones (chaque zone l'ajoute avec son propre site). Écran de choix de la zone (rôle, site, actions en attente par zone), bouton **Changer** dans l'en-tête ; les actions en attente partent pour chaque zone, quelle que soit la zone affichée.
 
+### Vêtements, porteurs, inventaire
+
+- **Rechercher un vêtement** (*Accueil*) : par code (tag), n° de série ou taille, article, statut, site, matricule du porteur, contaminés. Les filtres restent dans l'adresse (favori, lien partagé). *Exporter (CSV)* la sélection.
+- **Fiche porteur** (*Paramètres → Porteurs*, ou depuis la fiche d'un vêtement) : vêtements actuels et **historique de dotation** (qui a eu quoi, de quand à quand). Un compte « Porteur » relié à sa fiche voit **Mes vêtements**.
+- **Départ d'un pompier** : sur sa fiche, *Départ du porteur* → chaque vêtement est **restitué** (un vêtement nominatif redevient banalisé et réattribuable, même s'il était déjà au stock) ou **réformé** ; un vêtement en laverie se traite à son retour. Puis **Anonymiser** : nom, prénom, casier et lien au compte effacés, matricule remplacé par un code `ANONYME-…`, fiche désactivée. L'historique des vêtements reste entier (il ne contient que l'identifiant opaque). Irréversible. Pensez à retirer aussi son compte dans *Paramètres → Membres* s'il en avait un.
+- **Inventaire** (*Accueil → Faire un inventaire*, admin, gestionnaire, opérateur laverie) : choisir le site, scanner tout ce qui s'y trouve, valider. Rapport : présents, **trouvés en plus** (rattachés ailleurs ou perdus), **manquants** ; *Déclarer les manquants perdus*, *Remettre en stock les perdus retrouvés*, export CSV. Fonctionne **hors ligne**.
+
 ### Tests
 
 `npm test` lance les tests Vitest (normalisation des identifiants, détection des douchettes, résolution, lecture CSV, import, messages d'erreur, règles sur l'appareil, file et synchronisation hors ligne).
@@ -173,6 +181,8 @@ src/
   laverie/                   collecte, réception, lots de traitement, contrôle, livraison
   journal/                   écriture des événements et des opérations de lots (via la file locale)
   alertes/                   tableau de bord, liste et acquittement des alertes
+  porteurs/                  fiche porteur, historique de dotation, départ et anonymisation
+  inventaire/                inventaire d'un site et écarts
   hors-ligne/                base locale (Dexie), règles sur l'appareil, file, synchronisation, conflits
 public/                      icônes PWA
 supabase/
@@ -183,6 +193,7 @@ supabase/
   tests/synchro.sql          tirage incrémental, deux appareils hors ligne, renvoi sans doublon
   tests/alertes.sql          ouverture et fermeture de chaque type d'alerte, acquittement, tableau de bord
   tests/etancheite.sql       prestataire multi-zones : vêtements confiés seulement, aucun nom, aucune écriture hors périmètre
+  tests/porteurs.sql         départ d'un pompier, restitution libérée, anonymisation
   tests/local/               outillage pour un Postgres local (ne pas exécuter dans Supabase)
   amorcage.sql               créer une organisation et son premier admin
 ```

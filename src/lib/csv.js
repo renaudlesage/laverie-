@@ -67,3 +67,13 @@ export function normaliserEntete(entete) {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
 }
+
+// Écriture d'un tableau CSV pour Excel en français : séparateur « ; », BOM UTF-8.
+function cellule(valeur) {
+  const texte = valeur == null ? '' : String(valeur);
+  return /[";\r\n]/.test(texte) ? `"${texte.replace(/"/g, '""')}"` : texte;
+}
+
+export function ecrireCsv(entetes, lignes) {
+  return '﻿' + [entetes, ...lignes].map((l) => l.map(cellule).join(';')).join('\r\n') + '\r\n';
+}

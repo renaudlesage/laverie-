@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
 import { messageErreur } from '../lib/erreurs.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
@@ -9,7 +10,8 @@ import { useLignes } from './useLignes.js';
 //   champs    : descriptions de champs (voir Champ.jsx) ; `creationSeulement` : non modifiable ensuite
 //   resume    : (ligne) => { titre, detail }
 //   peutModifier : droit d'écriture de l'utilisateur
-//   ouvrir    : (ligne) => void, remplace le formulaire intégré (écran de détail)
+//   ouvrir    : (ligne) => void, remplace le formulaire intégré (écran de détail) ;
+//               le formulaire reste accessible par l'adresse ?modifier=<id>
 export default function EcranReferentiel({
   titre,
   table,
@@ -30,12 +32,25 @@ export default function EcranReferentiel({
   const [envoi, setEnvoi] = useState(false);
   const [message, setMessage] = useState(null);
 
+  const [parametres, setParametres] = useSearchParams();
+  const aModifier = parametres.get('modifier');
+  useEffect(() => {
+    const ligne = aModifier && lignes.find((l) => l.id === aModifier);
+    if (!ligne) return;
+    editer(ligne);
+    setParametres({}, { replace: true });
+  }, [aModifier, lignes]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function commencer(ligne) {
     setMessage(null);
     if (ligne && ouvrir) {
       ouvrir(ligne);
       return;
     }
+    editer(ligne);
+  }
+
+  function editer(ligne) {
     const valeurs = {};
     for (const c of champs) valeurs[c.nom] = ligne ? ligne[c.nom] : valeursInitiales[c.nom] ?? (c.type === 'case' ? false : null);
     setEdition({ ligne, valeurs });
