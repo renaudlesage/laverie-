@@ -39,7 +39,7 @@ export function OrganisationProvider({ children }) {
     setErreur(null);
     const { data, error } = await supabase
       .from('membres')
-      .select('id, role, site_id, organisation:organisations(id, nom, type)')
+      .select('id, role, site_id, organisation:organisations(id, nom, type, reglages)')
       .eq('user_id', utilisateur.id)
       .eq('actif', true);
     if (error) {

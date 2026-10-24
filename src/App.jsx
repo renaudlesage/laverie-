@@ -21,6 +21,9 @@ import Porteurs from './referentiels/Porteurs.jsx';
 import ImportPorteurs from './referentiels/ImportPorteurs.jsx';
 import Lecteurs from './referentiels/Lecteurs.jsx';
 import Membres from './referentiels/Membres.jsx';
+import Scan from './pages/Scan.jsx';
+import FicheVetement from './vetements/FicheVetement.jsx';
+import Enrolement from './vetements/Enrolement.jsx';
 
 function Protege({ droit, children }) {
   return <ExigeDroit droit={droit}>{children}</ExigeDroit>;
@@ -58,6 +61,9 @@ export default function App() {
             >
               <Route index element={<Accueil />} />
               <Route path="v/:code" element={<VetementParCode />} />
+              <Route path="scan" element={<Scan />} />
+              <Route path="vetements/:id" element={<FicheVetement />} />
+              <Route path="enrolement" element={<Protege droit="enrole"><Enrolement /></Protege>} />
               <Route path="parametres" element={<Protege droit="voitReferentiels"><Parametres /></Protege>} />
               <Route path="parametres/sites" element={<Protege droit="voitReferentiels"><Sites /></Protege>} />
               <Route path="parametres/traitements" element={<Protege droit="voitReferentiels"><Traitements /></Protege>} />

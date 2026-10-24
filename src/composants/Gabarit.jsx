@@ -1,4 +1,4 @@
-import { Link, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.jsx';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import { useDroits } from '../organisation/useDroits.js';
@@ -18,9 +18,6 @@ export default function Gabarit() {
           {organisation && <span className="organisation-courante">{organisation.nom}</span>}
         </div>
         <div className="entete-actions">
-          {voitReferentiels && (
-            <Link to="/parametres" className="bouton bouton-discret">Paramètres</Link>
-          )}
           {adhesions.length > 1 && (
             <Link to="/organisation" className="bouton bouton-discret">Changer</Link>
           )}
@@ -30,6 +27,11 @@ export default function Gabarit() {
           </button>
         </div>
       </header>
+      <nav className="navigation" aria-label="Navigation principale">
+        <NavLink to="/" end>Accueil</NavLink>
+        <NavLink to="/scan">Scanner</NavLink>
+        {voitReferentiels && <NavLink to="/parametres">Paramètres</NavLink>}
+      </nav>
       <IndicateurConnexion />
       <main className="contenu">
         <Outlet />

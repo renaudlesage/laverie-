@@ -12,14 +12,17 @@ export default function Accueil() {
       <p>
         Connecté en tant que <strong>{ROLES[role] ?? role}</strong>.
       </p>
-      {voitReferentiels && (
-        <p>
-          <Link to="/parametres" className="bouton bouton-principal">
+      <div className="pile">
+        <Link to="/scan" className="bouton bouton-principal bouton-large">
+          Scanner un vêtement
+        </Link>
+        {voitReferentiels && (
+          <Link to="/parametres" className="bouton bouton-large">
             Paramètres de la zone
           </Link>
-        </p>
-      )}
-      <p className="texte-secondaire">Le scan et les écrans de laverie arrivent avec les jalons suivants.</p>
+        )}
+      </div>
+      <p className="texte-secondaire">Enrôlement, laverie et alertes arrivent avec les jalons suivants.</p>
     </section>
   );
 }

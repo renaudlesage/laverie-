@@ -2,7 +2,7 @@
 
 Traçabilité du linge professionnel et de ses passages en laverie, multi-technologie (code-barres, QR, DataMatrix, NFC, puis RFID UHF). Premier marché : les zones de secours.
 
-> Statut : **jalons M0 à M2 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels saisis dans l'app). Prochaine étape : M3, couche d'identification.
+> Statut : **jalons M0 à M3 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes). Prochaine étape : M4, enrôlement et étiquettes.
 
 ## Documents
 
@@ -71,9 +71,19 @@ Pour que ce lien fonctionne, laisser activé *Authentication → Sign In / Provi
 
 *Paramètres* (admin) : créer les **sites** (postes, laverie interne, laverie externe), vérifier les **traitements**, créer les **articles** — limites par traitement, notice PDF, puis *Activer l'article* —, saisir ou **importer les porteurs** (CSV : `matricule;nom;prenom;casier;site`), déclarer les **lecteurs** et ajouter les **membres**.
 
+### Scanner (jalon M3)
+
+Onglet **Scanner** : mode **unitaire** (un scan ouvre la fiche) ou **rafale** (liste sans doublon, compteurs lus / attendus / inconnus). Chaque lecture est tracée dans `lectures_brutes`, même inconnue.
+
+- **Caméra** : QR, DataMatrix et codes-barres (Code 128, EAN…). Lecteur natif du navigateur si disponible, sinon décodeur intégré.
+- **Douchette** (Bluetooth ou USB) : à configurer en mode **clavier (HID)**, avec **Entrée** en suffixe, et sur la **même disposition de clavier que le téléphone** (AZERTY belge le plus souvent) — sinon les chiffres arrivent en symboles. Déclarer la douchette dans *Paramètres → Lecteurs* avec la technologie qu'elle lit, puis la choisir sous « Lecteur de cet appareil » sur l'écran de scan.
+- **NFC** : Chrome sur Android uniquement (bouton absent ailleurs). Lit l'UID du tag.
+- **Appareil photo du téléphone** : un QR de l'app (`https://<app>/v/<code>`) ouvre directement la fiche, après connexion.
+- Code inconnu : l'enrôlement est proposé aux admins et gestionnaires (formulaire au jalon M4).
+
 ### Tests
 
-`npm test` lance les tests Vitest (lecture CSV, analyse d'import, messages d'erreur).
+`npm test` lance les tests Vitest (normalisation des identifiants, détection des douchettes, résolution, lecture CSV, import, messages d'erreur).
 
 ### Installer sur Android
 
@@ -90,6 +100,8 @@ src/
   composants/                gabarit, indicateur de connexion, protections de routes
   pages/                     connexion, choix d'organisation, accueil, paramètres, /v/:code
   referentiels/              écrans sites, traitements, articles, porteurs (+ import CSV), lecteurs, membres
+  identification/            adaptateurs caméra, NFC, douchette ; normaliser(), resoudre() ; scan unitaire et rafale
+  vetements/                 fiche vêtement, entrée de l'enrôlement
 public/                      icônes PWA
 supabase/
   migrations/                à exécuter dans l'ordre dans le SQL Editor
