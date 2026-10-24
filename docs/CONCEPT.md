@@ -44,6 +44,9 @@ Chaque vêtement reçoit une identité numérique unique, indépendante de la te
 | Conflit entre deux appareils hors ligne | La base tranche dans l'ordre d'arrivée : la première action reçue s'applique, la suivante devient un « conflit à résoudre » sur l'appareil qui l'a faite ; jamais de double comptage | Écran *Synchronisation* (réessayer ou classer) |
 | Actions possibles hors ligne | Collecte, réception, lots, contrôle, réparation, livraison, contamination, perte, réforme ; annulation, enrôlement et tags demandent une connexion | Mis en œuvre au jalon M7 |
 | Index local | Rôles admin, gestionnaire, opérateur laverie, laverie externe ; effacé à la déconnexion | Mis en œuvre au jalon M7 |
+| Délais « non revenu » | Collecté sans réception : 2 jours ; en laverie : 7 jours | *Paramètres → Organisation* |
+| Usure des tags | Aucune garantie saisie (pas d'alerte) tant que la fiche du fabricant n'est pas connue ; alerte à 80 % de la garantie | *Paramètres → Organisation* |
+| Acquittement des alertes | Admin, gestionnaire, opérateur laverie ; une alerte acquittée ne se rouvre pas pour la même cause | — |
 
 Hors périmètre V1 : facturation de la laverie, pilotage des machines, produits lessiviels.
 

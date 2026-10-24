@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
 import { messageErreur } from '../lib/erreurs.js';
-import { ETAT_STATUT, STATUTS_VETEMENT, TECHNOLOGIES } from '../lib/libelles.js';
+import { ETAT_NIVEAU, ETAT_STATUT, STATUTS_VETEMENT, TECHNOLOGIES, TYPES_ALERTE } from '../lib/libelles.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import { useDroits } from '../organisation/useDroits.js';
 import { formaterCode, nouvelId } from '../identification/codes.js';
@@ -81,7 +81,7 @@ export default function FicheVetement() {
       return;
     }
     setErreur(null);
-    const [compteurs, limitesArticle, limitesVetement, identifiants, traitements, porteur] = await Promise.all([
+    const [compteurs, limitesArticle, limitesVetement, identifiants, traitements, porteur, alertes] = await Promise.all([
       supabase.from('compteurs').select('traitement_id, passages').eq('vetement_id', id),
       supabase.from('articles_limites').select('traitement_id, limite, seuil_alerte_pct').eq('article_id', v.data.article_id),
       supabase.from('vetements_limites').select('traitement_id, limite').eq('vetement_id', id),
@@ -94,8 +94,10 @@ export default function FicheVetement() {
             .eq('id', v.data.porteur_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
+      supabase.from('alertes').select('id, type, niveau, message').eq('vetement_id', id).is('close_le', null).order('ouverte_le'),
     ]);
     setDonnees({
+      alertes: alertes.data ?? [],
       vetement: v.data,
       compteurs: compteurs.data ?? [],
       limitesArticle: limitesArticle.data ?? [],
@@ -309,6 +311,23 @@ export default function FicheVetement() {
           )}
         </dl>
       </div>
+
+      {donnees.alertes?.length > 0 && (
+        <div className="carte">
+          <h2>Alertes ouvertes ({donnees.alertes.length})</h2>
+          <ul className="liste">
+            {donnees.alertes.map((a) => (
+              <li key={a.id} className={`ligne-liste ligne-statique alerte etat-${ETAT_NIVEAU[a.niveau]}`}>
+                <span className="ligne-titre">
+                  <span className={`jeton-etat etat-${ETAT_NIVEAU[a.niveau]}`}>{TYPES_ALERTE[a.type] ?? a.type}</span>
+                </span>
+                <span className="ligne-detail">{a.message}</span>
+              </li>
+            ))}
+          </ul>
+          <Link to="/alertes">Toutes les alertes</Link>
+        </div>
+      )}
 
       <div className="carte">
         <h2>Passages</h2>

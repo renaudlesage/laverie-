@@ -75,3 +75,16 @@ export const ETAT_STATUT = {
   reforme: 'froid',
   perdu: 'chaud',
 };
+
+export const TYPES_ALERTE = {
+  seuil_preventif: 'Fin de vie proche',
+  seuil_atteint: 'Limite de passages atteinte',
+  age_maximal: 'Âge maximal dépassé',
+  usure_tag: 'Tag à remplacer',
+  non_revenu: 'Non revenu',
+  ecart_reception: 'Écart de réception',
+  melange_circuits: 'Mélange de circuits',
+};
+
+// Niveau d'une alerte → classe d'état Eventware.
+export const ETAT_NIVEAU = { critique: 'chaud', attention: 'veille', info: 'info' };

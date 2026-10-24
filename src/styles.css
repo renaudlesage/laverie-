@@ -597,3 +597,16 @@ h3 { font-size: 15px; margin: 0; }
 .groupe-livraison { padding: 8px 0; border-bottom: 1px solid var(--trait); display: flex; flex-direction: column; gap: 6px; }
 .groupe-livraison:last-child { border-bottom: 0; }
 .groupe-livraison p { margin: 0; }
+
+/* --- Tableau de bord et alertes --- */
+
+.tuiles { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; }
+.tuiles li { border: 1px solid var(--trait); border-radius: var(--rayon); background: var(--surface); }
+.tuiles li > .etiquette, .tuiles li > strong, .tuile-lien { display: block; padding: 6px 10px; }
+.tuiles li > strong { padding-top: 0; }
+.tuiles strong { display: block; font-family: var(--mono); font-size: 28px; line-height: 1.2; color: var(--etat, var(--encre)); }
+.tuile-lien { color: inherit; text-decoration: none; min-height: var(--cible-tactile); }
+.tuile-lien:hover strong { text-decoration: underline; }
+.tuiles li.etat-chaud, .tuiles li.etat-veille { border-left: 4px solid var(--etat); }
+.filtres { display: flex; flex-wrap: wrap; gap: 6px; }
+.alerte { border-left: 4px solid var(--etat); }

@@ -2,7 +2,7 @@
 
 Traçabilité du linge professionnel et de ses passages en laverie, multi-technologie (code-barres, QR, DataMatrix, NFC, puis RFID UHF). Premier marché : les zones de secours.
 
-> Statut : **jalons M0 à M7 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes ; enrôlement, étiquettes et import ; journal, projections, actions et fiche de vie ; laverie, circuits standard et contaminé ; fonctionnement hors ligne). Prochaine étape : M8, alertes et tableau de bord.
+> Statut : **jalons M0 à M8 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes ; enrôlement, étiquettes et import ; journal, projections, actions et fiche de vie ; laverie, circuits standard et contaminé ; fonctionnement hors ligne ; alertes et tableau de bord). Prochaine étape : M9, portail laverie externe.
 
 ## Documents
 
@@ -58,8 +58,9 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 8 | `supabase/migrations/0008_journal.sql` | Machine à états, `ingerer_evenements`, annulation, `recalculer_vetement` (rejeu du journal) |
 | 9 | `supabase/migrations/0009_laverie.sql` | Sacs, collecte, réception, lots de traitement (comptage à la clôture), contrôle, livraison, `operer_lots` |
 | 10 | `supabase/migrations/0010_synchro.sql` | Horodatage `modifie_le` pour le tirage incrémental, `signaler_melanges` (alertes des refus faits sur l'appareil) |
+| 11 | `supabase/migrations/0011_alertes.sql` | Alertes automatiques (seuils, âge, usure des tags, non revenu), tâche horaire `pg_cron`, `tableau_de_bord`, diffusion en direct |
 
-Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») et `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
+Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés ») et `supabase/tests/alertes.sql` (« Tous les tests des alertes sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
 
 ### Comptes et première organisation
 
@@ -126,6 +127,19 @@ Onglet **Laverie** (admin, gestionnaire, opérateur laverie, laverie externe) :
 - **Fiche vêtement hors ligne** : résumé tiré de l'index (statut, passages, identifiants) ; historique et gestion des tags au retour du réseau. Annulation, enrôlement et tags demandent une connexion.
 - **Déconnexion** : l'index et la file de l'appareil sont effacés (appareil partagé) ; s'il reste des actions non envoyées, l'app le signale avant.
 
+### Alertes et tableau de bord (jalon M8)
+
+- **Accueil = tableau de bord** du périmètre de chacun (la laverie externe ne voit que ce qui lui est confié) : à surveiller (fin de vie, fin de vie proche, en laverie depuis trop longtemps, collectés non revenus), alertes ouvertes par type, vêtements par statut. Chaque chiffre mène à la liste. Mis à jour en direct.
+- **Alertes automatiques**, ouvertes et fermées par la base :
+  - *Fin de vie proche* : passages ≥ seuil d'alerte de la limite (par article et traitement, 80 % par défaut) ;
+  - *Limite de passages atteinte* et *Âge maximal dépassé* (durée de vie de l'article) ;
+  - *Tag à remplacer* : passages depuis la pose ≥ seuil d'usure de la **garantie du tag**, à saisir par technologie ;
+  - *Non revenu* : collecté sans réception, ou en laverie, au-delà du délai réglé ;
+  - *Écart de réception* et *Mélange de circuits* (jalon M6).
+- Une alerte se **ferme d'elle-même** quand sa cause disparaît (réforme, tag remplacé, retour du vêtement, réglage modifié). **Acquitter** (admin, gestionnaire, opérateur laverie) la ferme sans qu'elle se rouvre pour la même cause.
+- **Réglages** (*Paramètres → Organisation*) : garantie des tags par technologie, seuil d'usure, délais « non revenu ». Les alertes liées au temps sont réévaluées chaque heure (`pg_cron`).
+- **En direct** : les écrans de laverie et le tableau de bord se mettent à jour quand un autre appareil travaille (Supabase Realtime).
+
 ### Tests
 
 `npm test` lance les tests Vitest (normalisation des identifiants, détection des douchettes, résolution, lecture CSV, import, messages d'erreur, règles sur l'appareil, file et synchronisation hors ligne).
@@ -150,6 +164,7 @@ src/
   etiquettes/                planches d'étiquettes QR
   laverie/                   collecte, réception, lots de traitement, contrôle, livraison
   journal/                   écriture des événements et des opérations de lots (via la file locale)
+  alertes/                   tableau de bord, liste et acquittement des alertes
   hors-ligne/                base locale (Dexie), règles sur l'appareil, file, synchronisation, conflits
 public/                      icônes PWA
 supabase/
@@ -158,6 +173,7 @@ supabase/
   tests/journal.sql          machine à états, idempotence, annulation, rejeu
   tests/laverie.sql          cycle laverie, comptage, circuits, écarts, contrôle renforcé
   tests/synchro.sql          tirage incrémental, deux appareils hors ligne, renvoi sans doublon
+  tests/alertes.sql          ouverture et fermeture de chaque type d'alerte, acquittement, tableau de bord
   tests/local/               outillage pour un Postgres local (ne pas exécuter dans Supabase)
   amorcage.sql               créer une organisation et son premier admin
 ```

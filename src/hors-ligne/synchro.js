@@ -25,6 +25,7 @@ let etat = {
   erreur: null,
 };
 const abonnes = new Set();
+const changements = new Set(); // rappels (table) sur modification diffusée en direct
 const attentes = new Map(); // id de l'écriture → résoudre(réponse | null)
 let enVol = null;
 let encore = false;
@@ -207,6 +208,34 @@ export function attendre(ids, delai = 6000) {
   };
 }
 
+// Modifications faites ailleurs (autre appareil, tâche horaire), diffusées par Supabase Realtime.
+export function abonnerChangements(rappel) {
+  changements.add(rappel);
+  return () => changements.delete(rappel);
+}
+
+function ecouter(organisationId, index) {
+  let minuterie = null;
+  const recevoir = (table) => {
+    for (const f of changements) f(table);
+    if (!index || table === 'alertes') return;
+    // Index local : une seule synchronisation pour une rafale de modifications.
+    clearTimeout(minuterie);
+    minuterie = setTimeout(() => synchroniser(), 1500);
+  };
+  let canal = supabase.channel(`organisation-${organisationId}`);
+  for (const table of ['vetements', 'lots', 'alertes']) {
+    canal = canal.on('postgres_changes', { event: '*', schema: 'public', table, filter: `organisation_id=eq.${organisationId}` }, () =>
+      recevoir(table),
+    );
+  }
+  canal.subscribe();
+  return () => {
+    clearTimeout(minuterie);
+    supabase.removeChannel(canal);
+  };
+}
+
 // Démarre la synchronisation pour un utilisateur et une organisation. Renvoie l'arrêt.
 //   index : tenir l'index local (rôles de laverie) ; sinon seule la file est poussée.
 export async function demarrer({ utilisateurId, organisationId, index }) {
@@ -233,6 +262,7 @@ export async function demarrer({ utilisateurId, organisationId, index }) {
   window.addEventListener('offline', horsLigne);
   document.addEventListener('visibilitychange', visible);
   const minuterie = setInterval(() => document.visibilityState !== 'hidden' && synchroniser(), INTERVALLE_MS);
+  const arreterEcoute = supabase.channel ? ecouter(organisationId, index) : () => {};
   synchroniser();
 
   return () => {
@@ -240,6 +270,7 @@ export async function demarrer({ utilisateurId, organisationId, index }) {
     window.removeEventListener('offline', horsLigne);
     document.removeEventListener('visibilitychange', visible);
     clearInterval(minuterie);
+    arreterEcoute();
     if (contexte === moi) contexte = null;
   };
 }
