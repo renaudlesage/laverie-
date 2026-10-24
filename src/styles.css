@@ -195,6 +195,10 @@ a { color: var(--etat-info); }
 .indicateur.hors-ligne { background: var(--etat-chaud); color: var(--on-teinte); }
 .indicateur.hors-ligne .pastille { background: var(--on-teinte); }
 .indicateur .separateur { opacity: 0.6; }
+a.indicateur { color: inherit; text-decoration: none; min-height: 32px; }
+.indicateur-conflits { color: var(--etat-chaud); font-weight: 700; }
+.indicateur.hors-ligne .indicateur-conflits { color: var(--on-teinte); text-decoration: underline; }
+.conflit { border-left: 4px solid var(--etat-chaud); }
 
 .contenu { flex: 1; padding: 12px; width: 100%; max-width: 720px; margin: 0 auto; }
 

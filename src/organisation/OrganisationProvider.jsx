@@ -22,6 +22,25 @@ function ecrireChoix(id) {
   }
 }
 
+// Adhésions gardées sur l'appareil : l'app démarre hors ligne avec les dernières connues.
+const cleAdhesions = (utilisateurId) => `suivi-linge.adhesions.${utilisateurId}`;
+
+function lireAdhesions(utilisateurId) {
+  try {
+    return JSON.parse(localStorage.getItem(cleAdhesions(utilisateurId)));
+  } catch {
+    return null;
+  }
+}
+
+function ecrireAdhesions(utilisateurId, liste) {
+  try {
+    localStorage.setItem(cleAdhesions(utilisateurId), JSON.stringify(liste));
+  } catch {
+    // Stockage indisponible : pas de démarrage hors ligne.
+  }
+}
+
 export function OrganisationProvider({ children }) {
   const { utilisateur } = useAuth();
   const [adhesions, setAdhesions] = useState([]);
@@ -38,14 +57,24 @@ export function OrganisationProvider({ children }) {
       setChargement(false);
       return;
     }
-    if (chargePour.current !== utilisateur.id) setChargement(true);
+    // Dernières adhésions connues d'abord (démarrage immédiat, hors ligne compris), puis la base.
+    const connues = lireAdhesions(utilisateur.id);
+    if (chargePour.current !== utilisateur.id) {
+      if (connues) {
+        setAdhesions(connues);
+        setChargement(false);
+      } else setChargement(true);
+    }
     setErreur(null);
     const { data, error } = await supabase
       .from('membres')
       .select('id, role, site_id, organisation:organisations(id, nom, type, reglages)')
       .eq('user_id', utilisateur.id)
       .eq('actif', true);
-    if (error) {
+    const enCache = error && lireAdhesions(utilisateur.id);
+    if (enCache) {
+      setAdhesions(enCache);
+    } else if (error) {
       setErreur(error);
       setAdhesions([]);
     } else {
@@ -53,6 +82,7 @@ export function OrganisationProvider({ children }) {
         .filter((m) => m.organisation)
         .sort((a, b) => a.organisation.nom.localeCompare(b.organisation.nom, 'fr'));
       setAdhesions(liste);
+      ecrireAdhesions(utilisateur.id, liste);
       // Une seule organisation : choix automatique.
       if (liste.length === 1) {
         setOrganisationId(liste[0].organisation.id);

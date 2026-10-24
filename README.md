@@ -2,7 +2,7 @@
 
 Traçabilité du linge professionnel et de ses passages en laverie, multi-technologie (code-barres, QR, DataMatrix, NFC, puis RFID UHF). Premier marché : les zones de secours.
 
-> Statut : **jalons M0 à M6 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes ; enrôlement, étiquettes et import ; journal, projections, actions et fiche de vie ; laverie, circuits standard et contaminé). Prochaine étape : M7, fonctionnement hors-ligne.
+> Statut : **jalons M0 à M7 livrés** (socle PWA et connexion ; schéma, RLS et tests ; référentiels ; lecture QR, code-barres, NFC et douchettes ; enrôlement, étiquettes et import ; journal, projections, actions et fiche de vie ; laverie, circuits standard et contaminé ; fonctionnement hors ligne). Prochaine étape : M8, alertes et tableau de bord.
 
 ## Documents
 
@@ -57,8 +57,9 @@ Dans Supabase → *SQL Editor* → *New query*, coller puis exécuter **un fichi
 | 7 | `supabase/migrations/0007_reglages.sql` | Réglages de la zone : règle d'activation des articles, fenêtre anti-doublon |
 | 8 | `supabase/migrations/0008_journal.sql` | Machine à états, `ingerer_evenements`, annulation, `recalculer_vetement` (rejeu du journal) |
 | 9 | `supabase/migrations/0009_laverie.sql` | Sacs, collecte, réception, lots de traitement (comptage à la clôture), contrôle, livraison, `operer_lots` |
+| 10 | `supabase/migrations/0010_synchro.sql` | Horodatage `modifie_le` pour le tirage incrémental, `signaler_melanges` (alertes des refus faits sur l'appareil) |
 
-Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés ») `supabase/tests/journal.sql` (« Tous les tests du journal sont passés ») et `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
+Puis vérifier avec `supabase/tests/rls.sql` (« Tous les tests RLS sont passés »), `supabase/tests/journal.sql` (« Tous les tests du journal sont passés »), `supabase/tests/laverie.sql` (« Tous les tests de la laverie sont passés ») et `supabase/tests/synchro.sql` (« Tous les tests de la synchronisation sont passés »). Les tests travaillent dans une transaction annulée, ils ne laissent aucune donnée.
 
 ### Comptes et première organisation
 
@@ -116,9 +117,18 @@ Onglet **Laverie** (admin, gestionnaire, opérateur laverie, laverie externe) :
 - **Livraison** : prêts à livrer regroupés par poste du pompier attitré (un clic par poste), ou livraison par scan vers un poste choisi.
 - **Circuits séparés** : un vêtement contaminé est refusé dans un sac ou un lot standard, et inversement ; le refus crée une alerte *mélange de circuits*.
 
+### Hors ligne (jalon M7)
+
+- **L'app démarre sans réseau** une fois ouverte au moins une fois en ligne sur l'appareil (application en cache, dernières adhésions connues).
+- **Index local** (IndexedDB) pour les rôles admin, gestionnaire, opérateur laverie et laverie externe : vêtements visibles, identifiants, compteurs, lots en cours et récents, sites, traitements, sacs, articles et limites, porteurs par **matricule et casier seulement**. Complet au premier démarrage puis une fois par jour, **incrémental** toutes les 30 secondes en ligne.
+- **Toutes les écritures passent par la file de l'appareil**, même en ligne : règles bloquantes vérifiées sur place (transitions, circuits, contrôle renforcé, seuils), projection locale mise à jour tout de suite, puis envoi **dans l'ordre**. En ligne, l'écran attend quelques secondes la réponse de la base et l'affiche ; hors ligne, l'action reste « en attente » et part au retour du réseau, sans doublon (identifiant produit sur l'appareil).
+- **Indicateur** sous l'en-tête : en ligne / hors ligne, nombre d'actions en attente, conflits. Un clic ouvre **Synchronisation** : état, « Synchroniser maintenant », et **Conflits à résoudre** — actions refusées par la base après coup (ex. même vêtement mis dans deux lots sur deux appareils : il n'est compté qu'une fois, le second ajout devient un conflit). *Réessayer* ou *Classer*.
+- **Fiche vêtement hors ligne** : résumé tiré de l'index (statut, passages, identifiants) ; historique et gestion des tags au retour du réseau. Annulation, enrôlement et tags demandent une connexion.
+- **Déconnexion** : l'index et la file de l'appareil sont effacés (appareil partagé) ; s'il reste des actions non envoyées, l'app le signale avant.
+
 ### Tests
 
-`npm test` lance les tests Vitest (normalisation des identifiants, détection des douchettes, résolution, lecture CSV, import, messages d'erreur).
+`npm test` lance les tests Vitest (normalisation des identifiants, détection des douchettes, résolution, lecture CSV, import, messages d'erreur, règles sur l'appareil, file et synchronisation hors ligne).
 
 ### Installer sur Android
 
@@ -131,7 +141,7 @@ src/
   lib/supabase.js            client Supabase
   auth/                      session, connexion mot de passe / lien magique
   organisation/              adhésions et organisation courante
-  connexion/                 état réseau, file d'attente (vide jusqu'à M7)
+  connexion/                 état réseau et de la synchronisation
   composants/                gabarit, indicateur de connexion, protections de routes
   pages/                     connexion, choix d'organisation, accueil, paramètres, /v/:code
   referentiels/              écrans sites, traitements, articles, porteurs (+ import CSV), lecteurs, membres
@@ -139,13 +149,15 @@ src/
   vetements/                 enrôlement, fiche vêtement (tags, historique), import de l'existant
   etiquettes/                planches d'étiquettes QR
   laverie/                   collecte, réception, lots de traitement, contrôle, livraison
-  journal/                   envoi des événements et des opérations de lots
+  journal/                   écriture des événements et des opérations de lots (via la file locale)
+  hors-ligne/                base locale (Dexie), règles sur l'appareil, file, synchronisation, conflits
 public/                      icônes PWA
 supabase/
   migrations/                à exécuter dans l'ordre dans le SQL Editor
   tests/rls.sql              tests d'isolation et d'immuabilité du journal
   tests/journal.sql          machine à états, idempotence, annulation, rejeu
   tests/laverie.sql          cycle laverie, comptage, circuits, écarts, contrôle renforcé
+  tests/synchro.sql          tirage incrémental, deux appareils hors ligne, renvoi sans doublon
   tests/local/               outillage pour un Postgres local (ne pas exécuter dans Supabase)
   amorcage.sql               créer une organisation et son premier admin
 ```

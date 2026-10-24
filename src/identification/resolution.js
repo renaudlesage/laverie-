@@ -1,4 +1,5 @@
 import { candidats } from './normalisation.js';
+import { base } from '../hors-ligne/base.js';
 
 // Classe les identifiants actifs trouvés pour une lecture.
 //   trouve  : un seul vêtement
@@ -30,4 +31,29 @@ export async function resoudre(lecture, { client, organisationId }) {
   const { data, error } = await requete;
   if (error) return { statut: 'erreur', erreur: error, correspondances: [] };
   return classerCorrespondances(data);
+}
+
+// Même recherche dans l'index local de l'appareil (hors ligne compris).
+export async function resoudreLocal(lecture, { organisationId }) {
+  try {
+    const valeurs = [...new Set(candidats(lecture).map((c) => c.valeur))];
+    const lignes = (await base.identifiants.where('valeur').anyOf(valeurs).toArray()).filter(
+      (i) => i.organisation_id === organisationId && i.actif && (!lecture.technologie || i.technologie === lecture.technologie),
+    );
+    const enrichies = [];
+    for (const i of lignes) {
+      const v = await base.vetements.get(i.vetement_id);
+      if (!v) continue;
+      const article = await base.articles.get(v.article_id);
+      enrichies.push({
+        vetement_id: i.vetement_id,
+        technologie: i.technologie,
+        valeur: i.valeur,
+        vetement: { id: v.id, statut: v.statut, taille: v.taille, numero_serie: v.numero_serie, article: { designation: article?.designation } },
+      });
+    }
+    return classerCorrespondances(enrichies);
+  } catch (erreur) {
+    return { statut: 'inconnu', correspondances: [], erreur };
+  }
 }

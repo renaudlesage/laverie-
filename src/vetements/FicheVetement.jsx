@@ -11,6 +11,35 @@ import AjoutIdentifiant from './AjoutIdentifiant.jsx';
 import ActionsVetement from './ActionsVetement.jsx';
 import Historique, { detailEvenement, LIBELLES_EVENEMENTS } from './Historique.jsx';
 import { ficheVieCsv, telecharger } from './ficheVie.js';
+import { base } from '../hors-ligne/base.js';
+import { apresEcritureDirecte } from '../hors-ligne/synchro.js';
+import { useEnLigne } from '../connexion/useConnexion.js';
+
+// Hors ligne : résumé de la fiche tiré de l'index de l'appareil (sans historique ni gestion des tags).
+async function chargerLocal(id) {
+  const v = await base.vetements.get(id);
+  if (!v) return null;
+  const [article, site, compteurs, limitesArticle, limitesVetement, identifiants, traitements, porteur] = await Promise.all([
+    base.articles.get(v.article_id),
+    v.site_id ? base.sites.get(v.site_id) : null,
+    base.compteurs.where('vetement_id').equals(id).toArray(),
+    base.articles_limites.where('article_id').equals(v.article_id).toArray(),
+    base.vetements_limites.where('vetement_id').equals(id).toArray(),
+    base.identifiants.where('vetement_id').equals(id).toArray(),
+    base.traitements.where('organisation_id').equals(v.organisation_id).toArray(),
+    v.porteur_id ? base.porteurs.get(v.porteur_id) : null,
+  ]);
+  return {
+    local: true,
+    vetement: { ...v, article, site },
+    compteurs,
+    limitesArticle,
+    limitesVetement,
+    identifiants,
+    traitements: traitements.sort((a, b) => a.cree_le.localeCompare(b.cree_le)),
+    porteur,
+  };
+}
 
 const MOTIFS = ['Perdu', 'Illisible', 'Usé', 'Endommagé', 'Décousu'];
 
@@ -29,17 +58,29 @@ export default function FicheVetement() {
   const [message, setMessage] = useState(location.state?.enrole ? { type: 'info', texte: 'Vêtement enrôlé.' } : null);
   const [envoi, setEnvoi] = useState(false);
   const [version, setVersion] = useState(0);
+  const enLigne = useEnLigne();
 
   const charger = useCallback(async () => {
+    if (!enLigne) {
+      const local = await chargerLocal(id);
+      if (local) {
+        setErreur(null);
+        setDonnees(local);
+      } else setErreur('Hors ligne : ce vêtement n’est pas dans l’index de cet appareil.');
+      return;
+    }
     const v = await supabase
       .from('vetements')
       .select('*, article:articles(id, designation, fabricant, reference, duree_vie_mois), site:sites(nom)')
       .eq('id', id)
       .maybeSingle();
     if (v.error || !v.data) {
-      setErreur(v.error ? messageErreur(v.error) : 'Vêtement introuvable ou non accessible.');
+      const local = v.error && !v.status ? await chargerLocal(id) : null; // réseau coupé sans que l'appareil le sache
+      if (local) setDonnees(local);
+      else setErreur(v.error ? messageErreur(v.error) : 'Vêtement introuvable ou non accessible.');
       return;
     }
+    setErreur(null);
     const [compteurs, limitesArticle, limitesVetement, identifiants, traitements, porteur] = await Promise.all([
       supabase.from('compteurs').select('traitement_id, passages').eq('vetement_id', id),
       supabase.from('articles_limites').select('traitement_id, limite, seuil_alerte_pct').eq('article_id', v.data.article_id),
@@ -64,7 +105,7 @@ export default function FicheVetement() {
       porteur: porteur.data,
     });
     setVersion((n) => n + 1);
-  }, [id, voitNoms]);
+  }, [id, voitNoms, enLigne]);
 
   useEffect(() => {
     charger();
@@ -87,6 +128,7 @@ export default function FicheVetement() {
     }
     setAction(null);
     setMessage({ type: 'info', texte: succes });
+    await apresEcritureDirecte(organisation.id, [id]);
     await charger();
     return true;
   }
@@ -204,7 +246,7 @@ export default function FicheVetement() {
   const actifs = donnees.identifiants.filter((i) => i.actif);
   const retires = donnees.identifiants.filter((i) => !i.actif);
   const codesImprimables = actifs.filter((i) => i.technologie === 'qr' && normaliserCodeApp(i.valeur) === i.valeur).map((i) => i.valeur);
-  const modifiable = enrole && v.statut !== 'reforme';
+  const modifiable = enrole && v.statut !== 'reforme' && !donnees.local;
 
   return (
     <section className="pile">
@@ -213,6 +255,9 @@ export default function FicheVetement() {
       </p>
 
       {message && <p className={`message message-${message.type}`}>{message.texte}</p>}
+      {donnees.local && (
+        <p className="message">Hors ligne : résumé tiré de l’index de cet appareil. Historique et identifiants au retour du réseau.</p>
+      )}
       {location.state?.aImprimer?.length > 0 && (
         <Link to={`/etiquettes?codes=${location.state.aImprimer.join(',')}`} className="bouton bouton-principal bouton-large">
           Imprimer {location.state.aImprimer.length > 1 ? 'les étiquettes' : 'l’étiquette'} QR
@@ -304,8 +349,8 @@ export default function FicheVetement() {
                 <span className="mono">{i.valeur}</span>
               </span>
               <span className="ligne-detail">
-                {TECHNOLOGIES[i.technologie]} · posé le {new Date(i.pose_le).toLocaleDateString('fr-BE')} · {i.passages_depuis_pose} passage(s)
-                depuis la pose
+                {TECHNOLOGIES[i.technologie]}
+                {i.pose_le && ` · posé le ${new Date(i.pose_le).toLocaleDateString('fr-BE')} · ${i.passages_depuis_pose} passage(s) depuis la pose`}
               </span>
               {modifiable && !action && (
                 <span className="rangee-actions">
@@ -411,11 +456,14 @@ export default function FicheVetement() {
 
       <ActionsVetement vetement={v} onFait={apresAction} />
 
-      <Historique vetementId={id} version={version} onChange={apresAction} />
-
-      <button type="button" className="bouton" onClick={exporter}>
-        Exporter la fiche de vie (CSV)
-      </button>
+      {!donnees.local && (
+        <>
+          <Historique vetementId={id} version={version} onChange={apresAction} />
+          <button type="button" className="bouton" onClick={exporter}>
+            Exporter la fiche de vie (CSV)
+          </button>
+        </>
+      )}
     </section>
   );
 }

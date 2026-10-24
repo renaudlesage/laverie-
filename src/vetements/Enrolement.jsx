@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
+import { apresEcritureDirecte } from '../hors-ligne/synchro.js';
 import { messageErreur } from '../lib/erreurs.js';
 import { TECHNOLOGIES } from '../lib/libelles.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
@@ -68,6 +69,7 @@ export default function Enrolement() {
       setMessage({ type: 'erreur', texte: messageErreur(error) });
       return;
     }
+    await apresEcritureDirecte(organisation.id, [data.vetement_id]);
     const aImprimer = identifiants.filter((i) => i.genere).map((i) => i.valeur);
     navigate(`/vetements/${data.vetement_id}`, { state: { enrole: true, aImprimer } });
   }

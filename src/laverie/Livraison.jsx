@@ -1,42 +1,36 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase.js';
+import { base } from '../hors-ligne/base.js';
+import { useLocal, vetementsParStatut } from '../hors-ligne/local.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import Rafale from '../identification/Rafale.jsx';
 import { evenement } from '../journal/journal.js';
 import CompteRendu from './Envoi.jsx';
-import { CHAMPS_VETEMENT, codeVisible, envoyerPourLus } from './donnees.js';
+import { codeVisible, envoyerPourLus } from './donnees.js';
 import { ChoixSiteTravail, useSiteTravail } from './SiteTravail.jsx';
 
 // Livraison : les vêtements prêts retournent au poste ; un vêtement attitré repasse en service.
 export default function Livraison() {
   const { organisation } = useOrganisation();
   const travail = useSiteTravail();
-  const [prets, setPrets] = useState([]);
-  const [porteurs, setPorteurs] = useState({});
+  const prets = useLocal(
+    async () => (travail.siteId ? vetementsParStatut(organisation.id, ['pret'], travail.siteId) : []),
+    [organisation.id, travail.siteId],
+    [],
+  );
+  // Porteurs par matricule seulement (index local) : regroupement par poste du pompier attitré.
+  const porteurs = useLocal(
+    async () => {
+      const ids = [...new Set(prets.map((v) => v.porteur_id).filter(Boolean))];
+      return Object.fromEntries((await base.porteurs.bulkGet(ids)).filter(Boolean).map((p) => [p.id, p]));
+    },
+    [prets],
+    {},
+  );
   const [destination, setDestination] = useState('');
   const [resultat, setResultat] = useState(null);
   const [envoi, setEnvoi] = useState(false);
 
-  const charger = useCallback(async () => {
-    if (!travail.siteId) return;
-    const { data } = await supabase
-      .from('vetements')
-      .select(CHAMPS_VETEMENT)
-      .eq('organisation_id', organisation.id)
-      .eq('site_id', travail.siteId)
-      .eq('statut', 'pret');
-    setPrets(data ?? []);
-    const ids = [...new Set((data ?? []).map((v) => v.porteur_id).filter(Boolean))];
-    if (ids.length) {
-      const r = await supabase.from('porteurs_anonymises').select('id, matricule, site_id').in('id', ids);
-      setPorteurs(Object.fromEntries((r.data ?? []).map((p) => [p.id, p])));
-    }
-  }, [organisation.id, travail.siteId]);
-
-  useEffect(() => {
-    charger();
-  }, [charger]);
 
   const postes = travail.sites.filter((s) => s.actif && ['poste', 'magasin'].includes(s.type));
   const nomSite = (id) => travail.sites.find((s) => s.id === id)?.nom ?? 'Sans poste attitré';
@@ -53,7 +47,6 @@ export default function Livraison() {
     try {
       const b = await envoyerPourLus(organisation.id, lus, (l) => evenement('livraison', l.vetementId, { siteId: site, lecteurId: l.lecture?.lecteur_id }));
       setResultat({ ...b, texte: `Livraison vers ${nomSite(site)}.` });
-      await charger();
       return b.refuses;
     } finally {
       setEnvoi(false);

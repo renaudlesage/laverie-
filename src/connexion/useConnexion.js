@@ -1,21 +1,16 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { abonnerFile, nombreEnAttente } from '../journal/journal.js';
+import { useSyncExternalStore } from 'react';
+import { abonner, lireEtat } from '../hors-ligne/synchro.js';
 
-export function useEnLigne() {
-  const [enLigne, setEnLigne] = useState(() => navigator.onLine);
-  useEffect(() => {
-    const maj = () => setEnLigne(navigator.onLine);
-    window.addEventListener('online', maj);
-    window.addEventListener('offline', maj);
-    return () => {
-      window.removeEventListener('online', maj);
-      window.removeEventListener('offline', maj);
-    };
-  }, []);
-  return enLigne;
+// État de la synchronisation : { enLigne, enAttente, conflits, enCours, pret, derniereSynchro, erreur }.
+export function useSynchro() {
+  return useSyncExternalStore(abonner, lireEtat);
 }
 
-// Nombre d'événements en cours d'envoi (file persistée hors ligne au jalon M7).
+export function useEnLigne() {
+  return useSynchro().enLigne;
+}
+
+// Écritures de la file locale pas encore acceptées par la base.
 export function useFileAttente() {
-  return useSyncExternalStore(abonnerFile, nombreEnAttente);
+  return useSynchro().enAttente;
 }

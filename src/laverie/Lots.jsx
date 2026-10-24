@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
-import { useLignes } from '../referentiels/useLignes.js';
+import { base } from '../hors-ligne/base.js';
+import { lignesOrganisation, useLocal } from '../hors-ligne/local.js';
 import { nouvelId } from '../identification/codes.js';
 import { operation, operer } from '../journal/journal.js';
 import CompteRendu from './Envoi.jsx';
@@ -15,27 +15,33 @@ export default function Lots() {
   const { organisation } = useOrganisation();
   const navigate = useNavigate();
   const travail = useSiteTravail();
-  const { lignes: traitements } = useLignes('traitements', { ordre: 'cree_le' });
-  const [lots, setLots] = useState([]);
+  const traitements = useLocal(
+    async () =>
+      (await lignesOrganisation('traitements', organisation.id)).sort(
+        (a, b) => a.cree_le.localeCompare(b.cree_le) || a.libelle.localeCompare(b.libelle, 'fr'),
+      ),
+    [organisation.id],
+    [],
+  );
   const [nouveau, setNouveau] = useState(null);
   const [resultat, setResultat] = useState(null);
 
-  const charger = useCallback(async () => {
-    if (!travail.siteId) return;
-    const { data } = await supabase
-      .from('lots')
-      .select('*, traitement:traitements(libelle)')
-      .eq('organisation_id', organisation.id)
-      .eq('type', 'traitement')
-      .eq('site_id', travail.siteId)
-      .order('ouvert_le', { ascending: false })
-      .limit(30);
-    setLots(data ?? []);
-  }, [organisation.id, travail.siteId]);
-
-  useEffect(() => {
-    charger();
-  }, [charger]);
+  // Lots de la laverie de travail : ouverts d'abord, puis les plus récents.
+  const lots = useLocal(
+    async () => {
+      if (!travail.siteId) return [];
+      const liste = await base.lots
+        .where('[organisation_id+type]')
+        .equals([organisation.id, 'traitement'])
+        .filter((l) => l.site_id === travail.siteId)
+        .toArray();
+      liste.sort((a, b) => (b.statut === 'ouvert') - (a.statut === 'ouvert') || (b.ouvert_le > a.ouvert_le ? 1 : -1));
+      const libelles = new Map((await base.traitements.bulkGet(liste.map((l) => l.traitement_id))).filter(Boolean).map((t) => [t.id, t.libelle]));
+      return liste.slice(0, 30).map((l) => ({ ...l, traitement: { libelle: libelles.get(l.traitement_id) } }));
+    },
+    [organisation.id, travail.siteId],
+    [],
+  );
 
   const compatibles = nouveau
     ? traitements.filter((t) => t.actif && (t.circuit === 'les_deux' || t.circuit === nouveau.circuit))

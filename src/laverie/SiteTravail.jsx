@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
-import { useLignes } from '../referentiels/useLignes.js';
+import { lignesOrganisation, parNom, useLocal } from '../hors-ligne/local.js';
 
 const TYPES_LAVERIE = ['laverie_interne', 'laverie_externe'];
 
@@ -8,7 +8,9 @@ const TYPES_LAVERIE = ['laverie_interne', 'laverie_externe'];
 // les autres rôles choisissent, et le choix est retenu sur l'appareil.
 export function useSiteTravail() {
   const { organisation, adhesion } = useOrganisation();
-  const { lignes: sites, chargement } = useLignes('sites', { ordre: 'nom' });
+  const lus = useLocal(async () => (await lignesOrganisation('sites', organisation.id)).sort(parNom), [organisation.id]);
+  const sites = lus ?? [];
+  const chargement = lus === undefined;
   const cle = `suivi-linge.site-travail.${organisation.id}`;
   const impose = adhesion?.role === 'laverie_externe' ? adhesion.site_id : null;
   const [choisi, setChoisi] = useState(() => {

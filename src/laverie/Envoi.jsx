@@ -1,3 +1,5 @@
+import { motifLisible } from '../hors-ligne/motifs.js';
+
 // Compte rendu d'un envoi groupé d'événements ou d'opérations.
 export default function CompteRendu({ resultat }) {
   if (!resultat) return null;
@@ -7,7 +9,8 @@ export default function CompteRendu({ resultat }) {
       {texte && <p className="sans-marge">{texte}</p>}
       {acceptes !== undefined && (
         <p className="sans-marge">
-          {acceptes} enregistré(s){doublons ? `, ${doublons} déjà enregistré(s)` : ''}
+          {acceptes} enregistré(s){resultat.enAttente ? ` (dont ${resultat.enAttente} en attente d’envoi)` : ''}
+          {doublons ? `, ${doublons} déjà enregistré(s)` : ''}
           {rejets?.length ? `, ${rejets.length} refusé(s)` : ''}.
         </p>
       )}
@@ -16,7 +19,7 @@ export default function CompteRendu({ resultat }) {
           {rejets.map((r) => (
             <li key={r.id}>
               {r.libelle ? `${r.libelle} : ` : ''}
-              {r.motif}
+              {motifLisible(r.motif)}
             </li>
           ))}
         </ul>

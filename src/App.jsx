@@ -4,6 +4,8 @@ import { AuthProvider } from './auth/AuthProvider.jsx';
 import { OrganisationProvider } from './organisation/OrganisationProvider.jsx';
 import { ExigeOrganisation, ExigeSession } from './composants/Protections.jsx';
 import Gabarit from './composants/Gabarit.jsx';
+import DemarrageSynchro from './hors-ligne/DemarrageSynchro.jsx';
+import Synchronisation from './hors-ligne/Synchronisation.jsx';
 import Connexion from './pages/Connexion.jsx';
 import ChoixOrganisation from './pages/ChoixOrganisation.jsx';
 import Accueil from './pages/Accueil.jsx';
@@ -65,7 +67,9 @@ export default function App() {
               element={
                 <ExigeSession>
                   <ExigeOrganisation>
-                    <Gabarit />
+                    <DemarrageSynchro>
+                      <Gabarit />
+                    </DemarrageSynchro>
                   </ExigeOrganisation>
                 </ExigeSession>
               }
@@ -73,6 +77,7 @@ export default function App() {
               <Route index element={<Accueil />} />
               <Route path="v/:code" element={<VetementParCode />} />
               <Route path="scan" element={<Scan />} />
+              <Route path="synchronisation" element={<Synchronisation />} />
               <Route path="vetements/:id" element={<FicheVetement />} />
               <Route path="enrolement" element={<Protege droit="enrole"><Enrolement /></Protege>} />
               <Route path="vetements/import" element={<Protege droit="enrole"><ImportVetements /></Protege>} />

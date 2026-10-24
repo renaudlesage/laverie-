@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
+import { synchroniser } from '../hors-ligne/synchro.js';
 import { messageErreur } from '../lib/erreurs.js';
 import { lireCsv, normaliserEntete } from '../lib/csv.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
@@ -121,6 +122,7 @@ export default function ImportVetements() {
     }
     setEnvoi(null);
     setResultat(reponses);
+    synchroniser(); // les vêtements importés entrent dans l'index local
   }
 
   const bilan = resultat && {

@@ -1,4 +1,3 @@
-import { supabase } from '../lib/supabase.js';
 import { bilan, emettre } from '../journal/journal.js';
 
 // Champs d'un vêtement utiles aux écrans de laverie.
@@ -9,13 +8,8 @@ export function codeVisible(v) {
   return v.identifiants?.find((i) => i.actif)?.valeur ?? v.numero_serie ?? v.id.slice(0, 8);
 }
 
-export async function vetementsDuLot(lotId, statut) {
-  let requete = supabase.from('vetements').select(CHAMPS_VETEMENT).eq('lot_id', lotId);
-  if (statut) requete = requete.eq('statut', statut);
-  const { data, error } = await requete.order('cree_le');
-  if (error) throw error;
-  return data;
-}
+// Contenu d'un sac ou d'un lot, lu dans l'index local.
+export { vetementsDuLotLocal as vetementsDuLot } from '../hors-ligne/local.js';
 
 // Envoie un événement par vêtement lu en rafale ; renvoie le bilan (rejets libellés par code lu)
 // et la liste des vêtements refusés, que la rafale garde affichés.

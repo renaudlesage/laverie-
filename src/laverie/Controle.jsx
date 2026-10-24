@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase.js';
+import { base } from '../hors-ligne/base.js';
+import { enrichir, useLocal, vetementsParStatut } from '../hors-ligne/local.js';
 import { messageErreur } from '../lib/erreurs.js';
 import { STATUTS_VETEMENT } from '../lib/libelles.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
@@ -8,7 +9,7 @@ import Scanner from '../identification/Scanner.jsx';
 import { traiterLecture } from '../identification/traiterLecture.js';
 import { emettre, evenement } from '../journal/journal.js';
 import CompteRendu from './Envoi.jsx';
-import { CHAMPS_VETEMENT, codeVisible } from './donnees.js';
+import { codeVisible } from './donnees.js';
 import { ChoixSiteTravail, useSiteTravail } from './SiteTravail.jsx';
 
 const MOTIFS = {
@@ -19,24 +20,38 @@ const MOTIFS = {
 // Seuil atteint pour un vêtement (limite de passages ou âge), calculé pour l'affichage ;
 // la base refait le calcul à l'ingestion du contrôle.
 async function etatSeuil(v) {
-  const [compteurs, limitesArticle, limitesVetement, article] = await Promise.all([
-    supabase.from('compteurs').select('traitement_id, passages, traitement:traitements(libelle)').eq('vetement_id', v.id),
-    supabase.from('articles_limites').select('traitement_id, limite').eq('article_id', v.article_id),
-    supabase.from('vetements_limites').select('traitement_id, limite').eq('vetement_id', v.id),
-    supabase.from('articles').select('duree_vie_mois').eq('id', v.article_id).maybeSingle(),
+  const [compteurs, limitesArticle, limitesVetement, article, traitements] = await Promise.all([
+    base.compteurs.where('vetement_id').equals(v.id).toArray(),
+    base.articles_limites.where('article_id').equals(v.article_id).toArray(),
+    base.vetements_limites.where('vetement_id').equals(v.id).toArray(),
+    base.articles.get(v.article_id),
+    base.traitements.where('organisation_id').equals(v.organisation_id).toArray(),
   ]);
-  const limites = Object.fromEntries((limitesArticle.data ?? []).map((l) => [l.traitement_id, l.limite]));
-  for (const l of limitesVetement.data ?? []) limites[l.traitement_id] = l.limite;
-  const lignes = (compteurs.data ?? []).filter((c) => c.passages > 0).map((c) => ({ ...c, limite: limites[c.traitement_id] }));
+  const libelles = Object.fromEntries(traitements.map((t) => [t.id, t.libelle]));
+  const limites = Object.fromEntries(limitesArticle.map((l) => [l.traitement_id, l.limite]));
+  for (const l of limitesVetement) limites[l.traitement_id] = l.limite;
+  const lignes = compteurs
+    .filter((c) => c.passages > 0)
+    .map((c) => ({ ...c, traitement: { libelle: libelles[c.traitement_id] }, limite: limites[c.traitement_id] }));
   const depasse = lignes.filter((c) => c.limite && c.passages >= c.limite).map((c) => c.traitement?.libelle);
-  return { lignes, depasse, dureeVie: article.data?.duree_vie_mois };
+  return { lignes, depasse, dureeVie: article?.duree_vie_mois };
 }
 
 export default function Controle() {
   const { organisation } = useOrganisation();
   const travail = useSiteTravail();
-  const [aControler, setAControler] = useState([]);
-  const [aReparer, setAReparer] = useState([]);
+  const enAttente = useLocal(
+    async () =>
+      travail.siteId
+        ? (await vetementsParStatut(organisation.id, ['traite', 'a_reparer'], travail.siteId)).sort((a, b) =>
+            (a.derniere_lecture_le ?? '') < (b.derniere_lecture_le ?? '') ? -1 : 1,
+          )
+        : [],
+    [organisation.id, travail.siteId],
+    [],
+  );
+  const aControler = enAttente.filter((v) => v.statut === 'traite');
+  const aReparer = enAttente.filter((v) => v.statut === 'a_reparer');
   const [courant, setCourant] = useState(null); // { v, seuil }
   const [verdict, setVerdict] = useState(null);
   const [renforce, setRenforce] = useState(false);
@@ -44,22 +59,6 @@ export default function Controle() {
   const [resultat, setResultat] = useState(null);
   const [envoi, setEnvoi] = useState(false);
 
-  const charger = useCallback(async () => {
-    if (!travail.siteId) return;
-    const { data } = await supabase
-      .from('vetements')
-      .select(CHAMPS_VETEMENT)
-      .eq('organisation_id', organisation.id)
-      .eq('site_id', travail.siteId)
-      .in('statut', ['traite', 'a_reparer'])
-      .order('derniere_lecture_le');
-    setAControler((data ?? []).filter((v) => v.statut === 'traite'));
-    setAReparer((data ?? []).filter((v) => v.statut === 'a_reparer'));
-  }, [organisation.id, travail.siteId]);
-
-  useEffect(() => {
-    charger();
-  }, [charger]);
 
   async function ouvrir(v) {
     setResultat(null);
@@ -75,7 +74,12 @@ export default function Controle() {
       setResultat({ texte: r.statut === 'erreur' ? 'Vérifiez la connexion.' : `Code ${lecture.valeur} : vêtement inconnu ou non accessible.`, rejets: [] });
       return;
     }
-    const { data: v } = await supabase.from('vetements').select(CHAMPS_VETEMENT).eq('id', r.vetementId).single();
+    const brut = await base.vetements.get(r.vetementId);
+    if (!brut) {
+      setResultat({ texte: `Code ${lecture.valeur} : vêtement absent de l’index de cet appareil.`, rejets: [] });
+      return;
+    }
+    const [v] = await enrichir([brut]);
     if (v.statut !== 'traite') {
       setResultat({ texte: `${codeVisible(v)} : statut « ${STATUTS_VETEMENT[v.statut]} », pas en attente de contrôle.`, rejets: [] });
       return;
@@ -93,7 +97,6 @@ export default function Controle() {
       }
       setResultat({ texte: `${codeVisible(v)} : ${type === 'reparation' ? 'réparé, à recontrôler' : 'contrôle enregistré'}.` });
       setCourant(null);
-      await charger();
     } catch (e) {
       setResultat({ texte: messageErreur(e), rejets: [] });
     } finally {

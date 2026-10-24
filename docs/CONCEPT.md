@@ -41,6 +41,9 @@ Chaque vêtement reçoit une identité numérique unique, indépendante de la te
 | Activation d'un article | Notice + au moins une limite de traitement ; option « une limite pour chaque traitement actif » | *Paramètres → Organisation* |
 | Identification des sacs de collecte | Un sac est un contenant réutilisable qui porte un ou plusieurs identifiants, comme un vêtement (QR généré par l'app, code-barres ou NFC existant) ; chaque tournée crée un lot `sac_collecte` rattaché à ce sac | Mis en œuvre au jalon M6 |
 | Format des étiquettes | Modèles A4 et rouleaux, ou format personnalisé en mm | *Imprimer des étiquettes QR*, réglé par appareil |
+| Conflit entre deux appareils hors ligne | La base tranche dans l'ordre d'arrivée : la première action reçue s'applique, la suivante devient un « conflit à résoudre » sur l'appareil qui l'a faite ; jamais de double comptage | Écran *Synchronisation* (réessayer ou classer) |
+| Actions possibles hors ligne | Collecte, réception, lots, contrôle, réparation, livraison, contamination, perte, réforme ; annulation, enrôlement et tags demandent une connexion | Mis en œuvre au jalon M7 |
+| Index local | Rôles admin, gestionnaire, opérateur laverie, laverie externe ; effacé à la déconnexion | Mis en œuvre au jalon M7 |
 
 Hors périmètre V1 : facturation de la laverie, pilotage des machines, produits lessiviels.
 

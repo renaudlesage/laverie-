@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase.js';
 import { messageErreur } from '../lib/erreurs.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
-import { useLignes } from '../referentiels/useLignes.js';
+import { base } from '../hors-ligne/base.js';
+import { lignesOrganisation, parNom, useLocal } from '../hors-ligne/local.js';
 import Scanner from '../identification/Scanner.jsx';
 import Rafale from '../identification/Rafale.jsx';
 import { signaler } from '../identification/retour.js';
@@ -17,10 +17,18 @@ import { TOURNEE_EN_COURS, trouverSac } from './sacs.js';
 export default function Collecte() {
   const { organisation } = useOrganisation();
   const [parametres, setParametres] = useSearchParams();
-  const { lignes: sacs } = useLignes('sacs', { ordre: 'nom' });
-  const { lignes: sites } = useLignes('sites', { ordre: 'nom' });
-  const [tournees, setTournees] = useState([]);
-  const [contenu, setContenu] = useState([]);
+  const sacs = useLocal(async () => (await lignesOrganisation('sacs', organisation.id)).sort(parNom), [organisation.id], []);
+  const sites = useLocal(async () => (await lignesOrganisation('sites', organisation.id)).sort(parNom), [organisation.id], []);
+  const tournees = useLocal(
+    () =>
+      base.lots
+        .where('[organisation_id+type]')
+        .equals([organisation.id, 'sac_collecte'])
+        .filter((l) => TOURNEE_EN_COURS.includes(l.statut))
+        .toArray(),
+    [organisation.id],
+    [],
+  );
   const [siteOuverture, setSiteOuverture] = useState('');
   const [destination, setDestination] = useState('');
   const [resultat, setResultat] = useState(null);
@@ -29,24 +37,11 @@ export default function Collecte() {
   const sac = sacs.find((s) => s.id === sacId) ?? null;
   const tournee = tournees.find((t) => t.sac_id === sacId) ?? null;
 
-  const charger = useCallback(async () => {
-    const { data } = await supabase
-      .from('lots')
-      .select('*')
-      .eq('organisation_id', organisation.id)
-      .eq('type', 'sac_collecte')
-      .in('statut', TOURNEE_EN_COURS);
-    setTournees(data ?? []);
-  }, [organisation.id]);
-
-  useEffect(() => {
-    charger();
-  }, [charger]);
-
-  useEffect(() => {
-    if (tournee?.statut === 'ouvert') vetementsDuLot(tournee.id, 'collecte').then(setContenu).catch(() => setContenu([]));
-    else setContenu([]);
-  }, [tournee?.id, tournee?.statut]);
+  const contenu = useLocal(
+    async () => (tournee?.statut === 'ouvert' ? vetementsDuLot(tournee.id, 'collecte') : []),
+    [tournee?.id, tournee?.statut],
+    [],
+  );
 
   useEffect(() => {
     if (sac) setSiteOuverture(sac.site_id ?? '');
@@ -68,7 +63,6 @@ export default function Collecte() {
     setEnvoi(true);
     try {
       setResultat(await action());
-      await charger();
     } catch (e) {
       setResultat({ texte: messageErreur(e), rejets: [] });
     } finally {
@@ -87,7 +81,6 @@ export default function Collecte() {
       evenement('collecte', l.vetementId, { lotId: tournee.id, lecteurId: l.lecture.lecteur_id }),
     );
     setResultat(b);
-    setContenu(await vetementsDuLot(tournee.id, 'collecte'));
     return b.refuses;
   }
 

@@ -34,9 +34,11 @@ export function AuthProvider({ children }) {
         // Le compte est créé au premier lien : c'est ainsi qu'une invitation devient une adhésion.
         options: { emailRedirectTo: window.location.origin, shouldCreateUser: true },
       }),
-    deconnexion: () => {
+    deconnexion: async () => {
       setSortieVolontaire(true);
-      return supabase.auth.signOut();
+      // Hors ligne, la révocation côté serveur échoue : la session locale est effacée quand même.
+      const { error } = await supabase.auth.signOut();
+      if (error) await supabase.auth.signOut({ scope: 'local' });
     },
   };
 

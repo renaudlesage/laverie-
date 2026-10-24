@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
+import { useEnLigne } from '../connexion/useConnexion.js';
+import { Link, useParams } from 'react-router-dom';
+import { base } from '../hors-ligne/base.js';
+import { useLocal } from '../hors-ligne/local.js';
 import { messageErreur } from '../lib/erreurs.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import Rafale from '../identification/Rafale.jsx';
@@ -12,40 +15,44 @@ import { codeVisible, envoyerPourLus, vetementsDuLot } from './donnees.js';
 export default function LotDetail() {
   const { id } = useParams();
   const { organisation } = useOrganisation();
-  const [lot, setLot] = useState(null);
-  const [contenu, setContenu] = useState([]);
-  const [comptes, setComptes] = useState(0);
   const [resultat, setResultat] = useState(null);
   const [confirmation, setConfirmation] = useState(null); // 'cloturer' | 'avorter'
   const [motif, setMotif] = useState('');
   const [envoi, setEnvoi] = useState(false);
 
-  const charger = useCallback(async () => {
-    const { data } = await supabase.from('lots').select('*, traitement:traitements(libelle), site:sites!lots_organisation_id_site_id_fkey(nom)').eq('id', id).maybeSingle();
-    setLot(data);
-    if (data?.statut === 'ouvert') setContenu(await vetementsDuLot(id, 'en_traitement'));
-    else {
-      setContenu([]);
-      const { count } = await supabase.from('evenements').select('id', { count: 'exact', head: true }).eq('lot_id', id).eq('type', 'traitement').is('annule_par', null);
-      setComptes(count ?? 0);
-    }
-  }, [id]);
-
+  const lot = useLocal(
+    async () => {
+      const l = await base.lots.get(id);
+      if (!l) return null;
+      const [traitement, site] = await Promise.all([base.traitements.get(l.traitement_id), base.sites.get(l.site_id)]);
+      return { ...l, traitement, site };
+    },
+    [id],
+  );
+  const contenu = useLocal(async () => (lot?.statut === 'ouvert' ? vetementsDuLot(id, 'en_traitement') : []), [id, lot?.statut], []);
+  // Lot clôturé : passages comptés, d'après la dernière clôture vue sur cet appareil.
+  const [comptes, setComptes] = useState(null);
+  const enLigne = useEnLigne();
   useEffect(() => {
-    charger();
-  }, [charger]);
+    if (lot?.statut !== 'cloture' || !enLigne) return;
+    supabase
+      .from('evenements')
+      .select('id', { count: 'exact', head: true })
+      .eq('lot_id', id)
+      .eq('type', 'traitement')
+      .is('annule_par', null)
+      .then(({ count, error }) => !error && count !== null && setComptes(count));
+  }, [id, lot?.statut, enLigne]);
 
   async function ajouter({ lus }) {
     const b = await envoyerPourLus(organisation.id, lus, (l) => evenement('ajout_lot', l.vetementId, { lotId: id, lecteurId: l.lecture.lecteur_id }));
     setResultat(b);
-    await charger();
     return b.refuses;
   }
 
   async function retirer(v) {
     const [r] = await emettre(organisation.id, [evenement('retrait_lot', v.id, { lotId: id })]);
     setResultat(r.statut === 'rejete' ? { texte: r.motif, rejets: [] } : { texte: `${codeVisible(v)} retiré du lot.` });
-    await charger();
   }
 
   async function terminer() {
@@ -63,8 +70,8 @@ export default function LotDetail() {
                   : 'Lot avorté : aucun passage compté, les vêtements reviennent en attente de traitement.',
             },
       );
+      if (r.statut !== 'rejete' && confirmation === 'cloturer') setComptes(contenu.length);
       setConfirmation(null);
-      await charger();
     } catch (e) {
       setResultat({ texte: messageErreur(e), rejets: [] });
     } finally {
@@ -72,7 +79,8 @@ export default function LotDetail() {
     }
   }
 
-  if (!lot) return <section className="carte">Chargement…</section>;
+  if (lot === undefined) return <section className="carte">Chargement…</section>;
+  if (lot === null) return <section className="carte">Lot absent de cet appareil (clôturé depuis longtemps, ou pas encore synchronisé).</section>;
   const ouvert = lot.statut === 'ouvert';
 
   return (
@@ -92,7 +100,9 @@ export default function LotDetail() {
           </span>
         </p>
         <p className="texte-secondaire">{[lot.programme && `Programme ${lot.programme}`, lot.machine && `machine ${lot.machine}`, lot.site?.nom].filter(Boolean).join(' · ')}</p>
-        {!ouvert && <p>{lot.statut === 'cloture' ? `${comptes} passage(s) compté(s).` : 'Aucun passage compté.'}</p>}
+        {!ouvert && (
+          <p>{lot.statut === 'cloture' ? (comptes !== null ? `${comptes} passage(s) compté(s).` : 'Lot clôturé : passages comptés.') : 'Aucun passage compté.'}</p>
+        )}
       </div>
 
       <CompteRendu resultat={resultat} />

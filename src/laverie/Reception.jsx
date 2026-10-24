@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase.js';
 import { messageErreur } from '../lib/erreurs.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
-import { useLignes } from '../referentiels/useLignes.js';
+import { base } from '../hors-ligne/base.js';
+import { lignesOrganisation, useLocal } from '../hors-ligne/local.js';
 import Scanner from '../identification/Scanner.jsx';
 import Rafale from '../identification/Rafale.jsx';
 import { signaler } from '../identification/retour.js';
@@ -17,28 +17,25 @@ import { ChoixSiteTravail, useSiteTravail } from './SiteTravail.jsx';
 export default function Reception() {
   const { organisation } = useOrganisation();
   const travail = useSiteTravail();
-  const { lignes: sacs } = useLignes('sacs', { ordre: 'nom' });
-  const [expedies, setExpedies] = useState([]);
+  const sacs = useLocal(() => lignesOrganisation('sacs', organisation.id), [organisation.id], []);
   const [tournee, setTournee] = useState(null);
   const [attendus, setAttendus] = useState([]);
   const [resultat, setResultat] = useState(null);
 
-  const charger = useCallback(async () => {
-    if (!travail.siteId) return;
-    const { data } = await supabase
-      .from('lots')
-      .select('*, sac:sacs(nom, circuit)')
-      .eq('organisation_id', organisation.id)
-      .eq('type', 'sac_collecte')
-      .eq('statut', 'expedie')
-      .eq('site_destination_id', travail.siteId)
-      .order('ouvert_le');
-    setExpedies(data ?? []);
-  }, [organisation.id, travail.siteId]);
-
-  useEffect(() => {
-    charger();
-  }, [charger]);
+  const expedies = useLocal(
+    async () => {
+      if (!travail.siteId) return [];
+      const lots = await base.lots
+        .where('[organisation_id+type]')
+        .equals([organisation.id, 'sac_collecte'])
+        .filter((l) => l.statut === 'expedie' && l.site_destination_id === travail.siteId)
+        .sortBy('ouvert_le');
+      const parSac = new Map((await base.sacs.bulkGet(lots.map((l) => l.sac_id))).filter(Boolean).map((x) => [x.id, x]));
+      return lots.map((l) => ({ ...l, sac: parSac.get(l.sac_id) }));
+    },
+    [organisation.id, travail.siteId],
+    [],
+  );
 
   async function choisir(t) {
     setResultat(null);
@@ -74,7 +71,6 @@ export default function Reception() {
             : `Sac réceptionné. ${manquants.length ? `${manquants.length} manquant(s) signalé(s) : ${manquants.map(codeVisible).join(', ')}.` : 'Aucun manquant.'}${enTrop ? ` ${enTrop} en trop.` : ''}${inconnus.length ? ` ${inconnus.length} code(s) inconnu(s).` : ''}`,
       });
       setTournee(null);
-      await charger();
       return b.refuses;
     } catch (e) {
       setResultat({ texte: messageErreur(e), rejets: [] });
