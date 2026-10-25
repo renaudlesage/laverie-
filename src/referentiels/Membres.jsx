@@ -37,7 +37,7 @@ export default function Membres() {
   const nomsSites = Object.fromEntries(sites.map((s) => [s.id, s.nom]));
   const champs = [
     { nom: 'email', libelle: 'E-mail', typeSaisie: 'email', requis: true, creationSeulement: true },
-    { nom: 'role', libelle: 'Rôle', type: 'selection', options: options(ROLES), requis: true },
+    { nom: 'role', libelle: 'Rôle', type: 'selection', options: options(ROLES).filter((o) => o.valeur !== 'support'), requis: true },
     {
       nom: 'site_id',
       libelle: 'Laverie externe',
