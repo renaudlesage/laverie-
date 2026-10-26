@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { messageErreur } from '../lib/erreurs.js';
 import { TYPES_LOGO, enregistrerLogo, retirerLogo, urlLogo } from '../lib/logo.js';
+import Icone from '../composants/Icone.jsx';
 
 // Logo d'un client : aperçu, dépôt (préparé en icônes d'application) et retrait.
 export default function EditeurLogo({ org, logoLe, onChange, compact }) {
@@ -30,6 +31,7 @@ export default function EditeurLogo({ org, logoLe, onChange, compact }) {
       <div className="pile">
         <div className="rangee-actions">
           <label className={`bouton ${envoi ? 'desactive' : ''}`}>
+            <Icone nom="logo" />
             {envoi ? 'Envoi…' : apercu ? 'Changer le logo' : 'Ajouter un logo'}
             <input
               ref={fichier}

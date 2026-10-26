@@ -7,19 +7,21 @@ import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import Chargement from '../composants/Chargement.jsx';
 import BoutonTheme from '../composants/BoutonTheme.jsx';
 import EditeurLogo from '../organisation/EditeurLogo.jsx';
+import Icone from '../composants/Icone.jsx';
 
 const TYPES = { zone_secours: 'Zone de secours', autre: 'Autre' };
 const date = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-BE') : '—');
 const dateHeure = (iso) => (iso ? new Date(iso).toLocaleString('fr-BE', { dateStyle: 'short', timeStyle: 'short' }) : '—');
 
 // Une action à saisie (motif, e-mail) sur un client : formulaire en ligne, envoyé à une RPC.
-function ActionSaisie({ libelle, champ, placeholder, danger, onValider, desactive, aide }) {
+function ActionSaisie({ libelle, icone, champ, placeholder, danger, onValider, desactive, aide }) {
   const [ouvert, setOuvert] = useState(false);
   const [valeur, setValeur] = useState('');
   const [envoi, setEnvoi] = useState(false);
   if (!ouvert) {
     return (
       <button type="button" className={`bouton ${danger ? 'bouton-danger' : ''}`} disabled={desactive} title={aide} onClick={() => setOuvert(true)}>
+        <Icone nom={icone} />
         {libelle}
       </button>
     );
@@ -86,19 +88,21 @@ function Client({ c, onAction, onLogo }) {
       <div className="rangee-actions">
         <ActionSaisie
           libelle="Accès support"
+          icone="support"
           champ="Motif de l’accès (visible par l’administrateur de la zone)"
           placeholder="Ex. : aide au paramétrage des articles"
           desactive={!c.support_autorise || !!c.suspendue_le}
           aide={c.support_autorise ? '' : 'L’administrateur de la zone doit d’abord autoriser l’accès support'}
           onValider={(motif) => onAction('support', c, motif)}
         />
-        <ActionSaisie libelle="Ajouter un administrateur" champ="E-mail" placeholder="prenom.nom@zone.be" onValider={(email) => onAction('admin', c, email)} />
+        <ActionSaisie libelle="Ajouter un administrateur" icone="ajouterPersonne" champ="E-mail" placeholder="prenom.nom@zone.be" onValider={(email) => onAction('admin', c, email)} />
         {c.suspendue_le ? (
           <button type="button" className="bouton" onClick={() => onAction('reactiver', c)}>
+            <Icone nom="reactiver" />
             Réactiver
           </button>
         ) : (
-          <ActionSaisie libelle="Suspendre" champ="Motif de la suspension" placeholder="Ex. : contrat terminé" danger onValider={(motif) => onAction('suspendre', c, motif)} />
+          <ActionSaisie libelle="Suspendre" icone="suspendre" champ="Motif de la suspension" placeholder="Ex. : contrat terminé" danger onValider={(motif) => onAction('suspendre', c, motif)} />
         )}
       </div>
     </li>
@@ -186,8 +190,9 @@ export default function Plateforme() {
           <span className="organisation-courante">Plateforme</span>
         </div>
         <div className="entete-actions">
-          <Link to="/organisation" className="bouton bouton-discret">
-            Mes zones
+          <Link to="/organisation" className="bouton bouton-discret" title="Mes zones">
+            <Icone nom="changer" />
+            <span className="libelle-icone">Mes zones</span>
           </Link>
           <BoutonTheme />
         </div>
@@ -228,6 +233,7 @@ export default function Plateforme() {
               </label>
               <small className="aide">Les traitements par défaut sont créés avec la zone ; l’administrateur saisit ensuite sites, articles et porteurs.</small>
               <button type="submit" className="bouton bouton-principal">
+                <Icone nom="ajouter" />
                 Créer le client
               </button>
             </form>
@@ -276,6 +282,7 @@ export default function Plateforme() {
                         className="bouton bouton-discret"
                         onClick={() => appeler('retirer_admin_plateforme', { utilisateur: a.user_id }, `${a.email} n’est plus administrateur de la plateforme.`)}
                       >
+                        <Icone nom="retirerPersonne" />
                         Retirer
                       </button>
                     )}
@@ -291,6 +298,7 @@ export default function Plateforme() {
               >
                 <input type="email" required value={nouvelAdmin} onChange={(e) => setNouvelAdmin(e.target.value)} placeholder="E-mail (compte existant)" />
                 <button type="submit" className="bouton">
+                  <Icone nom="ajouterPersonne" />
                   Ajouter
                 </button>
               </form>

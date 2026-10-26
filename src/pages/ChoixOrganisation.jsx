@@ -5,6 +5,7 @@ import Chargement from '../composants/Chargement.jsx';
 import { base } from '../hors-ligne/base.js';
 import { useLocal } from '../hors-ligne/local.js';
 import { useSortie } from '../hors-ligne/useSortie.js';
+import Icone from '../composants/Icone.jsx';
 
 const LIBELLES_ROLE = {
   admin: 'Administrateur',
@@ -96,11 +97,13 @@ export default function ChoixOrganisation() {
         {corps}
         {estPlateforme && (
           <Link to="/plateforme" className="bouton bouton-large">
+            <Icone nom="plateforme" taille={24} />
             Espace Plateforme (gestion des clients)
           </Link>
         )}
         <div className="rangee-actions">
           <button type="button" className="bouton" onClick={recharger}>
+            <Icone nom="actualiser" />
             Actualiser
           </button>
           <button type="button" className="bouton bouton-discret" onClick={sortir} disabled={sortie}>

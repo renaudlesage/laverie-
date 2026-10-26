@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.jsx';
 import Chargement from '../composants/Chargement.jsx';
+import Icone from '../composants/Icone.jsx';
 
 export default function Connexion() {
   const { session, chargement, connexionMotDePasse, connexionLienMagique } = useAuth();
@@ -46,6 +47,7 @@ export default function Connexion() {
             className={mode === 'mot_de_passe' ? 'actif' : ''}
             onClick={() => setMode('mot_de_passe')}
           >
+            <Icone nom="motDePasse" />
             Mot de passe
           </button>
           <button
@@ -55,6 +57,7 @@ export default function Connexion() {
             className={mode === 'lien' ? 'actif' : ''}
             onClick={() => setMode('lien')}
           >
+            <Icone nom="lien" />
             Lien par e-mail
           </button>
         </div>

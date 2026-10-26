@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useSynchro } from '../connexion/useConnexion.js';
+import Icone from './Icone.jsx';
 
 export default function IndicateurConnexion() {
   const { enLigne, enAttente, conflits, enCours, erreur } = useSynchro();
   return (
     <Link to="/synchronisation" className={`indicateur ${enLigne ? 'en-ligne' : 'hors-ligne'}`} role="status" aria-live="polite">
-      <span className="pastille" aria-hidden="true" />
+      <Icone nom={enLigne ? 'enLigne' : 'horsLigne'} />
       <span>{enLigne ? (enCours ? 'Synchronisation' : 'En ligne') : 'Hors ligne'}</span>
       <span className="separateur" aria-hidden="true">·</span>
       <span>{enAttente === 0 ? 'Rien en attente' : `${enAttente} en attente`}</span>

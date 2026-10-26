@@ -7,6 +7,7 @@ import { demarrerNfc, nfcDisponible } from './nfc.js';
 import { normaliser } from './normalisation.js';
 import { signaler } from './retour.js';
 import { useClavier } from './useClavier.js';
+import Icone from '../composants/Icone.jsx';
 
 const URL_PUBLIQUE = import.meta.env.VITE_URL_PUBLIQUE || window.location.origin;
 const ANTI_DOUBLON_MS = 2000;
@@ -138,6 +139,7 @@ export default function Scanner({ onLecture, actif = true }) {
           aria-pressed={camera}
           onClick={() => setCamera((c) => !c)}
         >
+          <Icone nom="camera" />
           {camera ? 'Arrêter la caméra' : 'Caméra'}
         </button>
         {nfcDisponible && (
@@ -147,6 +149,7 @@ export default function Scanner({ onLecture, actif = true }) {
             aria-pressed={nfc}
             onClick={() => setNfc((n) => !n)}
           >
+            <Icone nom="nfc" />
             {nfc ? 'Arrêter le NFC' : 'NFC'}
           </button>
         )}

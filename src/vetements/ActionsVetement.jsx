@@ -5,6 +5,7 @@ import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import { useDroits } from '../organisation/useDroits.js';
 import { useLignes } from '../referentiels/useLignes.js';
 import { emettre, evenement } from '../journal/journal.js';
+import Icone from '../composants/Icone.jsx';
 
 // Actions possibles selon le statut (docs/CONCEPT.md §5). La base revérifie tout à l'ingestion.
 const ACTIONS = {
@@ -139,6 +140,7 @@ export default function ActionsVetement({ vetement, onFait }) {
         <div className="grille-actions">
           {possibles.map(([type, a]) => (
             <button key={type} type="button" className={`bouton ${a.danger ? 'bouton-danger' : ''}`} onClick={() => ouvrir(type)}>
+              <Icone nom={type} />
               {a.libelle}
             </button>
           ))}

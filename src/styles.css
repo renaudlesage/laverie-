@@ -649,3 +649,22 @@ h3 { font-size: 15px; margin: 0; }
 .editeur-logo-compact .logo-apercu { width: 56px; height: 56px; }
 .editeur-logo-compact .logo-apercu img { width: 48px; height: 48px; }
 label.bouton.desactive { opacity: 0.5; pointer-events: none; }
+
+/* --- Icônes (lucide, couleur du texte) --- */
+
+.icone { flex: none; }
+.bouton { gap: 8px; }
+.bouton-large { justify-content: flex-start; gap: 14px; padding: 0 18px; }
+.ligne-avec-icone { flex-direction: row; align-items: center; justify-content: flex-start; gap: 14px; }
+.ligne-avec-icone > .icone { color: var(--sourdine); }
+.ligne-textes { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.onglets button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.navigation a { flex-direction: column; gap: 2px; min-height: 56px; font-size: 13px; }
+.indicateur .icone { width: 14px; height: 14px; }
+.indicateur.en-ligne .icone { color: var(--etat-ok); }
+.grille-actions .bouton { justify-content: flex-start; }
+/* Écrans étroits : boutons de l'en-tête réduits à leur icône (le libellé reste lu par les lecteurs d'écran). */
+@media (max-width: 520px) {
+  .entete-actions .libelle-icone { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .entete-actions .bouton-discret { min-width: 44px; justify-content: center; }
+}

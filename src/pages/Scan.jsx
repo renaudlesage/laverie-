@@ -5,6 +5,7 @@ import ResultatInconnu from '../identification/ResultatInconnu.jsx';
 import Scanner from '../identification/Scanner.jsx';
 import { traiterLecture } from '../identification/traiterLecture.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
+import Icone from '../composants/Icone.jsx';
 
 const CLE_MODE = 'suivi-linge.mode-scan';
 
@@ -52,9 +53,11 @@ export default function Scan() {
       </div>
       <div className="onglets" role="tablist">
         <button type="button" role="tab" aria-selected={mode === 'unitaire'} className={mode === 'unitaire' ? 'actif' : ''} onClick={() => changerMode('unitaire')}>
+          <Icone nom="unitaire" />
           Unitaire
         </button>
         <button type="button" role="tab" aria-selected={mode === 'rafale'} className={mode === 'rafale' ? 'actif' : ''} onClick={() => changerMode('rafale')}>
+          <Icone nom="rafale" />
           Rafale
         </button>
       </div>

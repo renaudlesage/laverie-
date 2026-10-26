@@ -5,6 +5,7 @@ import { messageErreur } from '../lib/erreurs.js';
 import { useOrganisation } from '../organisation/OrganisationProvider.jsx';
 import Champ from './Champ.jsx';
 import { useLignes } from './useLignes.js';
+import Icone from '../composants/Icone.jsx';
 
 // Écran de liste + formulaire pour une table de référentiel de l'organisation.
 //   champs    : descriptions de champs (voir Champ.jsx) ; `creationSeulement` : non modifiable ensuite
@@ -147,6 +148,7 @@ export default function EcranReferentiel({
         <h1>{titre}</h1>
         {peutModifier && (
           <button type="button" className="bouton bouton-principal" onClick={() => commencer(null)}>
+            <Icone nom="ajouter" />
             {libelleAjout}
           </button>
         )}
